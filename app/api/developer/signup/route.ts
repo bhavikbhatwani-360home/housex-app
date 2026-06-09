@@ -23,14 +23,17 @@ export async function POST(req: Request) {
   if (!company) return Response.json({ error: "Enter your company name." }, { status: 400 });
 
   try {
-    const existing = await prisma.developer.findUnique({ where: { email } });
+    const existing = await prisma.teamMember.findUnique({ where: { email } });
     if (existing) return Response.json({ error: "An account with this email already exists." }, { status: 409 });
 
-    const dev = await prisma.developer.create({
-      data: { email, passwordHash: hashPassword(password), company, name: name || null, phone: phone || null },
+    // create the org + its owner login
+    const org = await prisma.developer.create({ data: { company, name: name || null, phone: phone || null } });
+    const member = await prisma.teamMember.create({
+      data: { developerId: org.id, email, passwordHash: hashPassword(password), name: name || null, role: "owner" },
     });
+
     const c = await cookies();
-    c.set(DEV_COOKIE, signSession(dev.id), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    c.set(DEV_COOKIE, signSession(member.id), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
     return Response.json({ ok: true });
   } catch (err) {
     console.error("Signup error:", err);

@@ -9,16 +9,28 @@ datasource db {
 }
 
 model Developer {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String
+  id           String       @id @default(cuid())
+  email        String?      @unique
+  passwordHash String?
   name         String?
   company      String
   phone        String?
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime     @default(now())
+  members      TeamMember[]
   properties   Property[]
   leads        Lead[]
   bookings     Booking[]
+}
+
+model TeamMember {
+  id           String    @id @default(cuid())
+  developerId  String
+  developer    Developer @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  email        String    @unique
+  passwordHash String
+  name         String?
+  role         String    @default("manager") // owner | manager | agent
+  createdAt    DateTime  @default(now())
 }
 
 model Booking {

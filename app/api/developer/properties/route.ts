@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/db";
-import { getDeveloper } from "@/lib/devauth";
+import { getMember, canManageProperties, type Role } from "@/lib/devauth";
 
 export const runtime = "nodejs";
 
 type UnitIn = { floor?: unknown; priceLakh?: unknown; facing?: unknown; carpetSqft?: unknown };
 
 export async function POST(req: Request) {
-  const dev = await getDeveloper();
-  if (!dev) return Response.json({ error: "Please sign in." }, { status: 401 });
+  const member = await getMember();
+  if (!member) return Response.json({ error: "Please sign in." }, { status: 401 });
+  if (!canManageProperties(member.role as Role)) return Response.json({ error: "Your role can't add properties." }, { status: 403 });
+  const dev = member.developer;
 
   let body: Record<string, unknown>;
   try {

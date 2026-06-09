@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/db";
-import { getDeveloper } from "@/lib/devauth";
+import { getMember, canManageProperties, type Role } from "@/lib/devauth";
 
 export const runtime = "nodejs";
 
 type UnitIn = { floor?: unknown; priceLakh?: unknown; facing?: unknown; carpetSqft?: unknown };
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const dev = await getDeveloper();
-  if (!dev) return Response.json({ error: "Please sign in." }, { status: 401 });
+  const member = await getMember();
+  if (!member) return Response.json({ error: "Please sign in." }, { status: 401 });
+  if (!canManageProperties(member.role as Role)) return Response.json({ error: "Your role can't edit properties." }, { status: 403 });
+  const dev = member.developer;
   const { id } = await params;
 
   // ownership check
@@ -66,8 +68,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const dev = await getDeveloper();
-  if (!dev) return Response.json({ error: "Please sign in." }, { status: 401 });
+  const member = await getMember();
+  if (!member) return Response.json({ error: "Please sign in." }, { status: 401 });
+  if (!canManageProperties(member.role as Role)) return Response.json({ error: "Your role can't delete properties." }, { status: 403 });
+  const dev = member.developer;
   const { id } = await params;
 
   const existing = await prisma.property.findUnique({ where: { id }, select: { developerId: true } }).catch(() => null);

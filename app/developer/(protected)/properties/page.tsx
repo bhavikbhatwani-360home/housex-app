@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { Building2, BadgeCheck, Plus } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { getDeveloper } from "@/lib/devauth";
+import { getMember, canManageProperties, type Role } from "@/lib/devauth";
 
 export const dynamic = "force-dynamic";
 
 export default async function DevProperties() {
-  const dev = await getDeveloper();
-  if (!dev) return null;
+  const member = await getMember();
+  if (!member) return null;
+  const dev = member.developer;
+  const canManage = canManageProperties(member.role as Role);
 
   const props = await prisma.property
     .findMany({
@@ -24,24 +26,28 @@ export default async function DevProperties() {
           <Building2 className="w-4 h-4 text-hx-red" /> Properties
           <span className="num text-[12px] font-medium text-hx-muted">{props.length}</span>
         </h1>
-        <Link href="/developer/properties/new" className="ml-auto inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
-          <Plus className="w-4 h-4" /> Add property
-        </Link>
+        {canManage && (
+          <Link href="/developer/properties/new" className="ml-auto inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
+            <Plus className="w-4 h-4" /> Add property
+          </Link>
+        )}
       </header>
       <div className="p-6">
         {props.length === 0 ? (
           <div className="rounded-xl border border-hx-line bg-white p-10 text-center max-w-xl mx-auto">
             <span className="w-14 h-14 rounded-2xl bg-hx-red/8 text-hx-red inline-flex items-center justify-center mb-4"><Building2 className="w-7 h-7" /></span>
             <div className="text-[15px] font-semibold">No properties yet</div>
-            <p className="text-[13px] text-hx-muted mt-1 mb-4">Add your first project so Baba can start recommending it to buyers.</p>
-            <Link href="/developer/properties/new" className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
-              <Plus className="w-4 h-4" /> Add property
-            </Link>
+            <p className="text-[13px] text-hx-muted mt-1 mb-4">{canManage ? "Add your first project so Baba can start recommending it to buyers." : "No properties listed yet."}</p>
+            {canManage && (
+              <Link href="/developer/properties/new" className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
+                <Plus className="w-4 h-4" /> Add property
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {props.map((p) => (
-              <Link key={p.id} href={`/developer/properties/${p.id}/edit`} className="rounded-xl border border-hx-line bg-white p-4 hover:border-hx-red/30 transition-colors block">
+              <Link key={p.id} href={canManage ? `/developer/properties/${p.id}/edit` : `/property/${p.id}`} className="rounded-xl border border-hx-line bg-white p-4 hover:border-hx-red/30 transition-colors block">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-[15px] font-semibold tracking-tight truncate">{p.name}</div>
@@ -56,7 +62,7 @@ export default async function DevProperties() {
                 </div>
                 <div className="mt-3 pt-3 border-t border-hx-line text-[10.5px] uppercase tracking-wider text-hx-muted flex items-center justify-between">
                   <span>{p.units.length} units · RERA {p.reraId || "—"}</span>
-                  <span className="text-hx-red font-semibold normal-case">Edit →</span>
+                  <span className="text-hx-red font-semibold normal-case">{canManage ? "Edit →" : "View →"}</span>
                 </div>
               </Link>
             ))}

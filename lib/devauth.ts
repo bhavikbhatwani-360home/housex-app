@@ -3,6 +3,7 @@ import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "crypto";
 import { prisma } from "./db";
 
 export const DEV_COOKIE = "hx_dev";
+export type Role = "owner" | "manager" | "agent";
 
 function secret() {
   return process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "housex-dev-secret-fallback";
@@ -36,18 +37,35 @@ export function verifySession(token: string): string | null {
   return sig === expect ? id : null;
 }
 
-export async function getDeveloperId(): Promise<string | null> {
+async function getMemberId(): Promise<string | null> {
   const c = await cookies();
   const t = c.get(DEV_COOKIE)?.value;
   return t ? verifySession(t) : null;
 }
 
-export async function getDeveloper() {
-  const id = await getDeveloperId();
+/** The logged-in team member (login identity), including their org. */
+export async function getMember() {
+  const id = await getMemberId();
   if (!id) return null;
   try {
-    return await prisma.developer.findUnique({ where: { id } });
+    return await prisma.teamMember.findUnique({ where: { id }, include: { developer: true } });
   } catch {
     return null;
   }
+}
+
+/** The org (company) the logged-in member belongs to — used to scope all data. */
+export async function getDeveloper() {
+  const m = await getMember();
+  return m?.developer ?? null;
+}
+
+export async function getRole(): Promise<Role | null> {
+  const m = await getMember();
+  return (m?.role as Role) ?? null;
+}
+
+/** owner + manager can manage properties; agent is view-only. */
+export function canManageProperties(role: Role | null | undefined) {
+  return role === "owner" || role === "manager";
 }
