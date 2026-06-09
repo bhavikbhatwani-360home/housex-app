@@ -18,6 +18,26 @@ model Developer {
   createdAt    DateTime   @default(now())
   properties   Property[]
   leads        Lead[]
+  bookings     Booking[]
+}
+
+model Booking {
+  id           String     @id @default(cuid())
+  propertyId   String?
+  property     Property?  @relation(fields: [propertyId], references: [id])
+  propertyName String
+  unitFloor    Int?
+  leadId       String?
+  lead         Lead?      @relation(fields: [leadId], references: [id])
+  developerId  String?
+  developer    Developer? @relation(fields: [developerId], references: [id])
+  buyerName    String
+  buyerPhone   String
+  buyerPan     String?
+  amount       Int        @default(999)
+  status       String     @default("Paid") // Created | Paid | Refunded
+  paymentRef   String?
+  createdAt    DateTime   @default(now())
 }
 
 model Property {
@@ -40,6 +60,7 @@ model Property {
   brochureUrl        String?
   units              Unit[]
   visits             Visit[]
+  bookings           Booking[]
   createdAt          DateTime   @default(now())
 }
 
@@ -70,6 +91,7 @@ model Lead {
   developer          Developer?    @relation(fields: [developerId], references: [id])
   conversation       Conversation?
   visits             Visit[]
+  bookings           Booking[]
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 }
