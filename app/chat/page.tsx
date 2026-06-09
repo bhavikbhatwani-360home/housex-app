@@ -39,6 +39,8 @@ export default function Chat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const idRef = useRef(0);
+  const convIdRef = useRef<string>("");
+  if (!convIdRef.current) convIdRef.current = crypto.randomUUID();
   const empty = messages.length === 0;
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function Chat() {
       const res = await fetch("/api/baba", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: [...history, { role: "user", content: txt }] }),
+        body: JSON.stringify({ conversationId: convIdRef.current, messages: [...history, { role: "user", content: txt }] }),
       });
       const data = await res.json();
       setTyping(false);
@@ -82,6 +84,7 @@ export default function Chat() {
     setMessages([]);
     setInput("");
     setTyping(false);
+    convIdRef.current = crypto.randomUUID();
   };
 
   return (

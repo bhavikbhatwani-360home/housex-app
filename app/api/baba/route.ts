@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { getInventoryContext, persistTurn } from "@/lib/properties";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -6,35 +7,40 @@ export const dynamic = "force-dynamic";
 // Default to the most capable model; override with BABA_MODEL (e.g. claude-haiku-4-5 to cut cost).
 const MODEL = process.env.BABA_MODEL || "claude-opus-4-8";
 
-const SYSTEM_PROMPT = `You are Baba, the AI home-finding assistant for HouseX — a chat-first real-estate platform for India. You talk to home buyers in a warm, friendly, concise way and help them find a home they can actually get.
+// Used only if the property database isn't connected yet.
+const FALLBACK_INVENTORY = `- Greenvalley by Square Homes — Virar West. 2 BHK, ₹52–58L, east-facing, 800 m from station. Units: floor 1 = ₹54L; floor 8 = ₹52L (offer unit, incl. covered parking + modular kitchen).
+- Sunrise Heights by Patel Realty — Virar West. 2 BHK, ₹56–62L, north-facing, 1.2 km from station.
+- Palm Crest Annexe by Hubtown — Virar East. 2 BHK, ₹50–56L, east-facing, 1.8 km from station.`;
+
+function buildSystemPrompt(inventory: string) {
+  return `You are Baba, the AI home-finding assistant for HouseX — a chat-first real-estate platform for India. You talk to home buyers in a warm, friendly, concise way and help them find a home they can actually get.
 
 LANGUAGE: You speak English, Hindi, and Marathi. Reply in whatever language the buyer uses; mixing (Hinglish) is natural and welcome.
 
-THE BUYER (Asha) AND CURRENT OPTIONS — use this as ground truth, do not invent other properties:
-- Looking for: 2 BHK in Virar West, Mumbai (MMR). Budget around ₹60 lakh. East-facing preferred.
-- 3 RERA-verified matches already shown in the chat:
-  1. Greenvalley by Square Homes — ₹54 L, 2 BHK, 720 sqft, east-facing, 800 m from station.
-  2. Sunrise Heights by Patel Realty — ₹58 L, 2 BHK, 690 sqft, north-facing, 1.2 km from station.
-  3. Palm Crest Annexe by Hubtown — ₹52 L, 2 BHK, 720 sqft, east-facing, 1.8 km from station.
-- Developer Rohit (Square Homes) has offered the Greenvalley 8th-floor east unit at ₹52 L all-in (down from ₹54 L), including covered parking + modular kitchen.
+CURRENT LIVE INVENTORY — this is real and up to date. Answer ONLY from these properties and their actual units. Quote exact floors and prices from this list; do NOT invent floors, prices, or projects that aren't here:
+${inventory}
 
 HOW TO REPLY:
-- Keep it SHORT — 1 to 3 sentences, like a WhatsApp message. This is a mobile chat.
+- Keep it SHORT — 1 to 3 sentences for simple questions; a tight list only when comparing options. This is a mobile chat.
 - Currency: always "₹" with Indian formatting (₹52 L, ₹62,50,000). Never use "$".
-- Be specific and useful: discuss EMI estimates, site visits, RERA verification, comparing the options, or negotiating.
-- For EMI, assume ~8.6% annual interest over 20 years unless the buyer says otherwise, and give the monthly figure.
-- If asked for more options, say you'll search and suggest nearby areas like Nalasopara or Vasai — don't fabricate specific listings.
-- Plain conversational text only — no markdown headings or bullet lists. A little emoji is fine, sparingly.
+- Be specific using the inventory above: quote real floor-wise prices, facing, distance, RERA, amenities. If a buyer asks about a floor, look it up in the unit list and give the actual price.
+- For EMI, assume ~8.6% annual interest over 20 years unless told otherwise, and give the monthly figure.
+- If asked for a brochure or floor plan: if the property shows "Brochure available", say you'll share it and that the developer will send the full brochure + floor plans when the visit is booked. Don't invent a link.
+- If nothing in inventory fits, say so honestly and suggest the closest nearby options that ARE in the list.
+- Plain conversational text only — no markdown headings. A little emoji is fine, sparingly.
 - Never ask for sensitive financial details (income, bank info) — HouseX keeps the buyer private.
-- Output ONLY your reply to the buyer. No preamble, no notes about yourself.`;
+- Output ONLY your reply to the buyer.`;
+}
 
 type InMsg = { role: "user" | "assistant"; content: string };
 
 export async function POST(req: Request) {
   let messages: InMsg[] = [];
+  let conversationId: string | undefined;
   try {
     const body = await req.json();
     messages = Array.isArray(body?.messages) ? body.messages : [];
+    conversationId = typeof body?.conversationId === "string" ? body.conversationId : undefined;
   } catch {
     return Response.json({ reply: "Sorry, I didn't catch that — could you say it again?" }, { status: 200 });
   }
@@ -46,7 +52,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // sanitize + cap history
   const clean = messages
     .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
     .slice(-20)
@@ -56,12 +61,14 @@ export async function POST(req: Request) {
     return Response.json({ reply: "Tell me what kind of home you're looking for and I'll help. 🙏" }, { status: 200 });
   }
 
+  const inventory = (await getInventoryContext()) ?? FALLBACK_INVENTORY;
+
   try {
     const client = new Anthropic();
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 512,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(inventory),
       messages: clean,
     });
     const reply = response.content
@@ -69,12 +76,15 @@ export async function POST(req: Request) {
       .map((b) => b.text)
       .join("")
       .trim();
-    return Response.json({ reply: reply || "Got it — want me to book a site visit or run an EMI estimate?" });
+    const finalReply = reply || "Got it — want me to book a site visit or run an EMI estimate?";
+
+    // persist the turn (best-effort)
+    const lastUser = [...clean].reverse().find((m) => m.role === "user");
+    await persistTurn(conversationId, lastUser?.content ?? "", finalReply);
+
+    return Response.json({ reply: finalReply });
   } catch (err) {
     console.error("Baba API error:", err);
-    return Response.json(
-      { reply: "I'm having a moment connecting — try again in a few seconds?" },
-      { status: 200 }
-    );
+    return Response.json({ reply: "I'm having a moment connecting — try again in a few seconds?" }, { status: 200 });
   }
 }
