@@ -49,11 +49,13 @@ All four are set in Vercel and confirmed live:
 - ⬜ Onboarding → pre-fills a lead before chat
 - ⬜ Brochure / floor-plan delivery
 
-## Phase 3 — Developer SaaS (multi-tenant) ⬜
-- ⬜ Developer signup / login
-- ⬜ Each developer sees only THEIR leads / properties / visits
-- ⬜ Lead routing (Greenvalley lead → Square Homes)
-- ⬜ Developer dashboard (KPIs)
+## Phase 3 — Developer SaaS (multi-tenant) ✅ (core)
+- ✅ Developer signup / login (`/developer`)
+- ✅ Each developer sees only THEIR leads / properties / visits
+- ✅ Lead routing — a visit on a developer's property routes the lead to them
+- ✅ Developer dashboard (scoped stats)
+- ⬜ Lead detail + reply (developer contacts the buyer)
+- ⬜ Edit / unpublish properties
 
 ## Phase 4 — Money ⬜
 - ⬜ ₹999 token booking (block a unit)
