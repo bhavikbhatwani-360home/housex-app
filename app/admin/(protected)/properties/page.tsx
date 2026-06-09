@@ -1,4 +1,5 @@
-import { Building2, AlertCircle, BadgeCheck } from "lucide-react";
+import { Building2, AlertCircle, BadgeCheck, Plus } from "lucide-react";
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,9 @@ export default async function PropertiesPage() {
           <Building2 className="w-4 h-4 text-hx-red" /> Properties
           <span className="num text-[12px] font-medium text-hx-muted">{props.length}</span>
         </h1>
-        <span className="ml-auto text-[12px] text-hx-muted">Add/edit form — coming next</span>
+        <Link href="/admin/properties/new" className="ml-auto inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
+          <Plus className="w-4 h-4" /> Add property
+        </Link>
       </header>
 
       <div className="p-6">
