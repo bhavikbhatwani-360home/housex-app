@@ -8,10 +8,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Developer {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String?
+  company      String
+  phone        String?
+  createdAt    DateTime   @default(now())
+  properties   Property[]
+  leads        Lead[]
+}
+
 model Property {
-  id                 String   @id @default(cuid())
+  id                 String     @id @default(cuid())
   name               String
   developer          String
+  developerId        String?
+  developerAccount   Developer? @relation(fields: [developerId], references: [id])
   city               String
   locality           String
   bhk                String
@@ -21,12 +35,12 @@ model Property {
   facing             String
   distanceToStationM Int
   reraId             String
-  status             String   @default("Live")
-  amenities          String[] @default([])
+  status             String     @default("Live")
+  amenities          String[]   @default([])
   brochureUrl        String?
   units              Unit[]
   visits             Visit[]
-  createdAt          DateTime @default(now())
+  createdAt          DateTime   @default(now())
 }
 
 model Unit {
@@ -52,6 +66,8 @@ model Lead {
   timeline           String?
   interestedProperty String?
   status             String        @default("New")
+  developerId        String?
+  developer          Developer?    @relation(fields: [developerId], references: [id])
   conversation       Conversation?
   visits             Visit[]
   createdAt          DateTime      @default(now())

@@ -40,10 +40,21 @@ export async function POST(req: Request) {
       }
     }
 
+    // route the lead to the developer who owns the property (if any)
+    let ownerDeveloperId: string | null = null;
+    if (propertyId) {
+      const prop = await prisma.property.findUnique({ where: { id: propertyId }, select: { developerId: true } });
+      ownerDeveloperId = prop?.developerId ?? null;
+    }
+
     if (leadId) {
       await prisma.lead.update({
         where: { id: leadId },
-        data: { interestedProperty: propertyName, status: "Visit booked" },
+        data: {
+          interestedProperty: propertyName,
+          status: "Visit booked",
+          ...(ownerDeveloperId ? { developerId: ownerDeveloperId } : {}),
+        },
       });
     }
 
