@@ -41,7 +41,7 @@ export default async function DevProperties() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {props.map((p) => (
-              <div key={p.id} className="rounded-xl border border-hx-line bg-white p-4">
+              <Link key={p.id} href={`/developer/properties/${p.id}/edit`} className="rounded-xl border border-hx-line bg-white p-4 hover:border-hx-red/30 transition-colors block">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-[15px] font-semibold tracking-tight truncate">{p.name}</div>
@@ -54,10 +54,11 @@ export default async function DevProperties() {
                   <span className="text-hx-muted">·</span><span>{p.bhk}</span>
                   <span className="text-hx-muted">·</span><span>{p.facing}</span>
                 </div>
-                <div className="mt-3 pt-3 border-t border-hx-line text-[10.5px] uppercase tracking-wider text-hx-muted">
-                  {p.units.length} units · RERA {p.reraId || "—"}
+                <div className="mt-3 pt-3 border-t border-hx-line text-[10.5px] uppercase tracking-wider text-hx-muted flex items-center justify-between">
+                  <span>{p.units.length} units · RERA {p.reraId || "—"}</span>
+                  <span className="text-hx-red font-semibold normal-case">Edit →</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
