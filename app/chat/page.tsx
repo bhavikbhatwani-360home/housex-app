@@ -28,17 +28,30 @@ function nowTime() {
   return `${h}:${m.toString().padStart(2, "0")} ${ap}`;
 }
 
-function babaReply(t: string) {
+// Fallback if the AI endpoint is unreachable
+function babaReplyFallback(t: string) {
   const low = t.toLowerCase();
   if (low.includes("site") || low.includes("visit"))
     return `I can hold a slot at <span class="font-semibold">Greenvalley</span> this Saturday at <span class="num font-semibold">11 AM</span>. Confirm?`;
   if (low.includes("emi") || low.includes("loan"))
     return `For <span class="num font-semibold">₹52 L</span> at 8.6% for 20 yrs, EMI is roughly <span class="num font-semibold">₹45,400/mo</span>. Want me to pre-check eligibility?`;
   if (low.includes("similar") || low.includes("more"))
-    return `I'll widen to <span class="font-semibold">Nalasopara West</span> and ping you in <span class="num font-semibold">2 min</span> with 4 fresh options.`;
-  if (low.includes("hi") || low.includes("hello") || low.includes("namaste"))
-    return `Hello! Want me to book the site visit, run an EMI, or find more like Greenvalley?`;
-  return `Got it. I'll keep digging — want me to also <span class="font-semibold">book the site visit</span> or <span class="font-semibold">run an EMI estimate</span>?`;
+    return `I'll widen to <span class="font-semibold">Nalasopara West</span> and ping you with fresh options.`;
+  return `Got it. Want me to <span class="font-semibold">book a site visit</span> or <span class="font-semibold">run an EMI estimate</span>?`;
+}
+
+// strip HTML from a stored Baba bubble so we can send plain text to the API
+function htmlToText(html: string) {
+  return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+}
+
+// safely render the AI's plain-text reply into a bubble (escape, then **bold** + newlines)
+function formatReply(text: string) {
+  const esc = text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc
+    .replace(/\*\*(.+?)\*\*/g, '<span class="font-semibold">$1</span>')
+    .replace(/\n/g, "<br/>");
 }
 
 export default function Chat() {
@@ -74,16 +87,30 @@ export default function Chat() {
   const pushBaba = (html: string) =>
     setMessages((m) => [...m, { id: ++idRef.current, kind: "baba", html, time: nowTime() }]);
 
-  const send = (raw: string) => {
+  const send = async (raw: string) => {
     const txt = raw.trim();
     if (!txt) return;
+    // build the API history from the current dynamic thread + this new turn
+    const history = messages.map((m) => ({
+      role: m.kind === "user" ? ("user" as const) : ("assistant" as const),
+      content: m.kind === "user" ? m.text : htmlToText(m.html),
+    }));
     pushUser(txt);
     setInput("");
-    setTimeout(() => setTyping(true), 350);
-    setTimeout(() => {
+    setTyping(true);
+    try {
+      const res = await fetch("/api/baba", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: [...history, { role: "user", content: txt }] }),
+      });
+      const data = await res.json();
       setTyping(false);
-      pushBaba(babaReply(txt));
-    }, 1500);
+      pushBaba(formatReply(data.reply || ""));
+    } catch {
+      setTyping(false);
+      pushBaba(babaReplyFallback(txt));
+    }
   };
 
   const stopRec = (doSend: boolean) => {
