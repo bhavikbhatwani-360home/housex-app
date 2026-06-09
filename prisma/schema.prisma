@@ -25,6 +25,7 @@ model Property {
   amenities          String[] @default([])
   brochureUrl        String?
   units              Unit[]
+  visits             Visit[]
   createdAt          DateTime @default(now())
 }
 
@@ -52,8 +53,23 @@ model Lead {
   interestedProperty String?
   status             String        @default("New")
   conversation       Conversation?
+  visits             Visit[]
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
+}
+
+model Visit {
+  id           String    @id @default(cuid())
+  propertyId   String?
+  property     Property? @relation(fields: [propertyId], references: [id])
+  propertyName String
+  leadId       String?
+  lead         Lead?     @relation(fields: [leadId], references: [id])
+  date         String // e.g. "Sat, 14 Jun"
+  slot         String // e.g. "11:00 AM"
+  mode         String // "In-person" | "Video"
+  status       String    @default("Requested")
+  createdAt    DateTime  @default(now())
 }
 
 model Conversation {

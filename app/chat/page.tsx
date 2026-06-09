@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, ArrowUp, Plus, House, IndianRupee, Compass, CalendarCheck, MapPin, BadgeCheck, CalendarPlus } from "lucide-react";
+import { Sparkles, ArrowUp, Plus, House, IndianRupee, Compass, CalendarCheck, MapPin, BadgeCheck, CalendarPlus, X, Check, Video, Building2 } from "lucide-react";
 
 type PropertyCard = {
   id: string; name: string; developer: string; locality: string; city: string;
@@ -79,6 +79,7 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(false);
+  const [bookingFor, setBookingFor] = useState<PropertyCard | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const idRef = useRef(0);
@@ -128,6 +129,30 @@ export default function Chat() {
     setInput("");
     setTyping(false);
     convIdRef.current = crypto.randomUUID();
+  };
+
+  const confirmVisit = async (date: string, slot: string, mode: string) => {
+    const p = bookingFor;
+    if (!p) return;
+    setBookingFor(null);
+    try {
+      const res = await fetch("/api/visits", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ conversationId: convIdRef.current, propertyId: p.id, propertyName: p.name, date, slot, mode }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html:
+          `🎉 <span class="font-semibold">Site visit booked!</span><br/>${p.name} · ${date} · ${slot} · ${mode}.<br/>The developer will confirm shortly, and I'll remind you before.` }]);
+      } else {
+        setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html:
+          `I couldn't lock that in just now. Want to try another slot?` }]);
+      }
+    } catch {
+      setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html:
+        `I couldn't reach the booking service — try again in a moment?` }]);
+    }
   };
 
   return (
@@ -203,7 +228,7 @@ export default function Chat() {
                     {m.properties && m.properties.length > 0 && (
                       <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
                         {m.properties.map((p, i) => (
-                          <PropertyCardView key={p.id} p={p} stripe={STRIPES[i % STRIPES.length]} onBook={() => send(`I'd like to book a site visit for ${p.name}`)} />
+                          <PropertyCardView key={p.id} p={p} stripe={STRIPES[i % STRIPES.length]} onBook={() => setBookingFor(p)} />
                         ))}
                       </div>
                     )}
@@ -258,6 +283,90 @@ export default function Chat() {
             Baba helps you find RERA-verified homes · Hindi · Marathi · English · Replies can have mistakes — verify key details.
           </p>
         </div>
+      </div>
+
+      {bookingFor && (
+        <BookingSheet property={bookingFor} onClose={() => setBookingFor(null)} onConfirm={confirmVisit} />
+      )}
+    </div>
+  );
+}
+
+const SLOTS = ["10:00 AM", "11:30 AM", "2:00 PM", "4:00 PM", "6:00 PM"];
+
+function nextDays(n: number) {
+  const out: { label: string; sub: string; full: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < n; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    out.push({
+      label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en-IN", { weekday: "short" }),
+      sub: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+      full: d.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" }),
+    });
+  }
+  return out;
+}
+
+function BookingSheet({ property, onClose, onConfirm }: { property: PropertyCard; onClose: () => void; onConfirm: (date: string, slot: string, mode: string) => void }) {
+  const days = nextDays(7);
+  const [dateIdx, setDateIdx] = useState(1);
+  const [slot, setSlot] = useState(SLOTS[1]);
+  const [mode, setMode] = useState("In-person");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full sm:max-w-[440px] bg-white rounded-t-3xl sm:rounded-3xl border border-hx-line shadow-hx-lg p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-start justify-between mb-1">
+          <div>
+            <div className="text-[16px] font-semibold tracking-tight">Book a site visit</div>
+            <div className="text-[12.5px] text-hx-muted">{property.name} · {property.locality}</div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-hx-bg inline-flex items-center justify-center text-hx-slate"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Pick a day</div>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          {days.map((d, i) => (
+            <button key={i} onClick={() => setDateIdx(i)}
+              className={`shrink-0 w-[64px] rounded-xl border px-2 py-2 text-center ${dateIdx === i ? "border-hx-red bg-hx-red/5" : "border-hx-line bg-white"}`}>
+              <div className={`text-[12px] font-semibold ${dateIdx === i ? "text-hx-red" : "text-hx-ink"}`}>{d.label}</div>
+              <div className="text-[10.5px] text-hx-muted num">{d.sub}</div>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Time</div>
+        <div className="flex flex-wrap gap-2">
+          {SLOTS.map((s) => (
+            <button key={s} onClick={() => setSlot(s)}
+              className={`px-3 h-9 rounded-lg border text-[13px] font-medium num ${slot === s ? "border-hx-red bg-hx-red/5 text-hx-red" : "border-hx-line bg-white text-hx-slate"}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Visit type</div>
+        <div className="grid grid-cols-2 gap-2">
+          {[{ k: "In-person", icon: Building2 }, { k: "Video", icon: Video }].map((m) => {
+            const Icon = m.icon;
+            return (
+              <button key={m.k} onClick={() => setMode(m.k)}
+                className={`h-11 rounded-xl border inline-flex items-center justify-center gap-2 text-[13.5px] font-medium ${mode === m.k ? "border-hx-red bg-hx-red/5 text-hx-red" : "border-hx-line bg-white text-hx-slate"}`}>
+                <Icon className="w-4 h-4" /> {m.k}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => onConfirm(days[dateIdx].full, slot, mode)}
+          className="mt-5 w-full h-12 rounded-2xl bg-hx-red text-white text-[15px] font-semibold shadow-hx-red inline-flex items-center justify-center gap-2"
+        >
+          <Check className="w-5 h-5" /> Confirm visit
+        </button>
       </div>
     </div>
   );
