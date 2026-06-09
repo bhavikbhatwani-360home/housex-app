@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Sparkles, Search, MoreVertical, Signal, Wifi, CheckCheck, MapPin, Camera,
+  Sparkles, Search, MoreVertical, CheckCheck, MapPin, Camera,
   BadgeCheck, Heart, PlayCircle, MessageCircle, Play, Clock, ArrowRight,
   UserPlus, BadgePercent, CheckCircle2, XCircle, Send, Plus, Smile, Mic, X,
   Check, Maximize2, Languages,
@@ -52,7 +52,7 @@ export default function Chat() {
   const [offerState, setOfferState] = useState<"default" | "counter" | "accepted" | "declined" | "countered">("default");
   const [counterValue, setCounterValue] = useState("50,00,000");
 
-  const threadRef = useRef<HTMLDivElement>(null);
+  const threadRef = useRef<HTMLElement>(null);
   const idRef = useRef(0);
 
   const scrollBottom = () => {
@@ -120,25 +120,11 @@ export default function Chat() {
   const recStamp = `${Math.floor(recSeconds / 60)}:${(recSeconds % 60).toString().padStart(2, "0")}`;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center md:py-10 md:px-6">
+    <div className="min-h-dvh w-full flex md:items-center md:justify-center md:py-7">
       <div className="phone shrink-0">
         <div className="w-full h-full flex flex-col bg-hx-bg">
-          {/* status bar */}
-          <div className="absolute top-0 left-0 right-0 h-[44px] z-30 px-7 flex items-center justify-between text-[14px] font-semibold text-hx-ink pointer-events-none">
-            <span className="num">9:41</span>
-            <div className="absolute left-1/2 -translate-x-1/2 top-[10px] w-[110px] h-[28px] rounded-full bg-black" />
-            <div className="flex items-center gap-1.5">
-              <Signal className="w-4 h-4" />
-              <Wifi className="w-4 h-4" />
-              <span className="inline-block w-6 h-3 rounded-[3px] border border-hx-ink relative">
-                <span className="absolute inset-[1.5px] right-[2px] bg-hx-ink rounded-[1.5px]" />
-                <span className="absolute -right-[3px] top-[3px] w-[2px] h-[6px] bg-hx-ink rounded-r-[1px]" />
-              </span>
-            </div>
-          </div>
-
           {/* app bar */}
-          <header className="pt-[44px] bg-white border-b border-hx-line z-20">
+          <header className="shrink-0 pt-[max(0px,env(safe-area-inset-top))] bg-white border-b border-hx-line z-20">
             <div className="h-[58px] px-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="relative shrink-0">
@@ -422,7 +408,7 @@ export default function Chat() {
           </main>
 
           {/* composer */}
-          <footer className="px-3 pt-2 pb-5 bg-white/95 backdrop-blur border-t border-hx-line z-20">
+          <footer className="shrink-0 px-3 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-hx-line z-20">
             {!recording ? (
               <div className="flex items-center gap-2">
                 <button className="w-10 h-10 rounded-full bg-hx-bg text-hx-slate inline-flex items-center justify-center shrink-0"><Plus className="w-5 h-5" /></button>
@@ -465,7 +451,6 @@ export default function Chat() {
             <div className="mt-2 flex items-center justify-center gap-1.5 text-[10.5px] text-hx-muted label-mono">
               <Languages className="w-3 h-3" /> Hindi · Marathi · English · Baba understands all three
             </div>
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-1.5 w-32 h-1 rounded-full bg-hx-ink/80" />
           </footer>
 
           {/* tour overlay */}

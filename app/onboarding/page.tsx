@@ -6,7 +6,7 @@ import {
   Sparkles, MapPin, ChevronDown, ArrowLeft, ArrowRight, BadgeCheck, House,
   PhoneOff, Compass, TrainFront, Trees, Dumbbell, Sun, KeyRound, Dog, Car,
   Building, ShieldCheck, Rocket, CalendarClock, CalendarRange, Telescope,
-  Loader, Check, CheckCircle2, PartyPopper, Signal, Wifi,
+  Loader, Check, CheckCircle2, PartyPopper,
 } from "lucide-react";
 
 const TOTAL = 6;
@@ -64,7 +64,7 @@ export default function Onboarding() {
 
   const [matchingDone, setMatchingDone] = useState(false);
   const [searchSub, setSearchSub] = useState(SEARCH_SUBS[0]);
-  const bodyRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLElement>(null);
 
   const go = (s: number) => setStep(Math.max(0, Math.min(TOTAL - 1, s)));
   const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
@@ -107,80 +107,34 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center md:py-10 md:px-6">
-      <div className="flex items-start gap-10">
-        {/* side annotation + step jumper (desktop only) */}
-        <div className="hidden lg:block w-60 pt-6 text-right">
-          <div className="label-mono text-[11px] uppercase tracking-[0.12em] text-hx-muted">Buyer app</div>
-          <h1 className="mt-1 text-[26px] font-extrabold tracking-tight leading-tight">Onboarding</h1>
-          <p className="mt-2 text-[13px] text-hx-slate leading-relaxed">
-            The front door. Baba learns intent in 5 guided taps, then hands a warm, scored buyer to the chat — and to developers.
-          </p>
-          <div className="mt-5 rounded-2xl bg-white border border-hx-line shadow-hx p-2 text-left">
-            <div className="label-mono text-[10px] uppercase tracking-[0.12em] text-hx-muted px-2 pt-1 pb-2">Jump to step</div>
-            {STEP_NAMES.map((name, i) => (
-              <button
-                key={name}
-                onClick={() => go(i)}
-                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[12.5px] font-semibold flex items-center gap-2 ${
-                  step === i ? "bg-hx-bg" : ""
-                }`}
-              >
-                <span
-                  className={`jn w-5 h-5 rounded-full inline-flex items-center justify-center text-[10px] num ${
-                    step === i ? "bg-hx-red text-white" : "bg-hx-bg"
-                  }`}
-                >
-                  {i + 1}
-                </span>
-                {name}
-              </button>
-            ))}
+    <div className="min-h-dvh w-full flex md:items-center md:justify-center md:py-7">
+      <div className="phone shrink-0">
+        {/* header: back + progress + skip */}
+        <header className="shrink-0 px-5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center gap-3">
+          <button
+            onClick={() => go(step - 1)}
+            className={`w-8 h-8 rounded-full bg-white border border-hx-line inline-flex items-center justify-center shadow-hx-sm transition-opacity ${
+              step === 0 ? "opacity-0 pointer-events-none" : ""
+            }`}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div className="flex-1 h-1.5 rounded-full bg-hx-line overflow-hidden">
+            <div
+              className="h-full bg-hx-red rounded-full transition-all duration-300"
+              style={{ width: `${Math.round((step / (TOTAL - 1)) * 100)}%` }}
+            />
           </div>
-        </div>
+          <button onClick={() => go(step + 1)} className="text-[12.5px] font-semibold text-hx-muted">Skip</button>
+        </header>
 
-        {/* ───────── PHONE ───────── */}
-        <div className="phone shrink-0">
-          {/* status bar */}
-          <div className="absolute top-0 left-0 right-0 h-[44px] z-40 px-7 flex items-center justify-between text-[14px] font-semibold text-hx-ink pointer-events-none">
-            <span className="num">9:41</span>
-            <div className="absolute left-1/2 -translate-x-1/2 top-[10px] w-[110px] h-[28px] rounded-full bg-black" />
-            <div className="flex items-center gap-1.5">
-              <Signal className="w-4 h-4" />
-              <Wifi className="w-4 h-4" />
-              <span className="inline-block w-6 h-3 rounded-[3px] border border-hx-ink relative">
-                <span className="absolute inset-[1.5px] right-[2px] bg-hx-ink rounded-[1.5px]" />
-                <span className="absolute -right-[3px] top-[3px] w-[2px] h-[6px] bg-hx-ink rounded-r-[1px]" />
-              </span>
-            </div>
-          </div>
-
-          {/* topbar: progress + skip */}
-          <div className="absolute top-[44px] left-0 right-0 z-30 px-5 h-[52px] flex items-center gap-3">
-            <button
-              onClick={() => go(step - 1)}
-              className={`w-8 h-8 rounded-full bg-white border border-hx-line inline-flex items-center justify-center shadow-hx-sm transition-opacity ${
-                step === 0 ? "opacity-0 pointer-events-none" : ""
-              }`}
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div className="flex-1 h-1.5 rounded-full bg-hx-line overflow-hidden">
-              <div
-                className="h-full bg-hx-red rounded-full transition-all duration-300"
-                style={{ width: `${Math.round((step / (TOTAL - 1)) * 100)}%` }}
-              />
-            </div>
-            <button onClick={() => go(step + 1)} className="text-[12.5px] font-semibold text-hx-muted">Skip</button>
-          </div>
-
-          {/* body */}
-          <div ref={bodyRef} className="absolute inset-0 top-[96px] bottom-[92px] overflow-y-auto no-scrollbar px-5">
+        {/* body */}
+        <main ref={bodyRef} className="flex-1 overflow-y-auto no-scrollbar px-5">
             {/* STEP 0 — WELCOME */}
             {step === 0 && (
               <section className="flex flex-col relative min-h-full">
                 <div
-                  className="absolute -top-[96px] -left-5 -right-5 h-[440px] pointer-events-none"
+                  className="absolute -top-[80px] -left-5 -right-5 h-[420px] pointer-events-none"
                   style={{
                     background:
                       "radial-gradient(120% 80% at 50% 0%, rgba(224,57,67,0.13), transparent 58%), radial-gradient(95% 60% at 82% 4%, rgba(255,179,128,0.24), transparent 55%)",
@@ -405,10 +359,10 @@ export default function Onboarding() {
             )}
 
             <div className="h-2" />
-          </div>
+          </main>
 
           {/* bottom CTA */}
-          <div className="absolute bottom-0 left-0 right-0 z-30 px-5 pt-2.5 pb-6 bg-gradient-to-t from-hx-bg via-hx-bg/95 to-transparent">
+          <footer className="shrink-0 px-5 pt-2.5 pb-[max(1.25rem,env(safe-area-inset-bottom))] bg-hx-bg border-t border-hx-line">
             <button
               onClick={onCta}
               disabled={step === 5 && !matchingDone}
@@ -417,8 +371,7 @@ export default function Onboarding() {
               <span>{ctaLabel}</span>
               <ArrowRight className="w-[18px] h-[18px]" />
             </button>
-          </div>
-        </div>
+          </footer>
       </div>
     </div>
   );
