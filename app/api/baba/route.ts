@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { getInventoryContext, persistTurn } from "@/lib/properties";
+import { getInventoryContext, persistTurn, getMentionedProperties } from "@/lib/properties";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,11 +78,14 @@ export async function POST(req: Request) {
       .trim();
     const finalReply = reply || "Got it — want me to book a site visit or run an EMI estimate?";
 
+    // attach visual cards for any real properties Baba referenced
+    const properties = await getMentionedProperties(finalReply);
+
     // persist the turn (best-effort)
     const lastUser = [...clean].reverse().find((m) => m.role === "user");
     await persistTurn(conversationId, lastUser?.content ?? "", finalReply);
 
-    return Response.json({ reply: finalReply });
+    return Response.json({ reply: finalReply, properties });
   } catch (err) {
     console.error("Baba API error:", err);
     return Response.json({ reply: "I'm having a moment connecting — try again in a few seconds?" }, { status: 200 });

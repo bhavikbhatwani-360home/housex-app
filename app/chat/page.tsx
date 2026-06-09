@@ -1,11 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, ArrowUp, Plus, House, IndianRupee, Compass, CalendarCheck } from "lucide-react";
+import { Sparkles, ArrowUp, Plus, House, IndianRupee, Compass, CalendarCheck, MapPin, BadgeCheck, CalendarPlus } from "lucide-react";
+
+type PropertyCard = {
+  id: string; name: string; developer: string; locality: string; city: string;
+  bhk: string; facing: string; priceMin: number; priceMax: number;
+  distanceToStationM: number; reraId: string; unitCount: number;
+};
 
 type Msg =
   | { id: number; role: "user"; text: string }
-  | { id: number; role: "baba"; html: string };
+  | { id: number; role: "baba"; html: string; properties?: PropertyCard[] };
+
+const STRIPES = [
+  "repeating-linear-gradient(135deg,#F1E2D8 0 12px,#FAEFE7 12px 24px)",
+  "repeating-linear-gradient(135deg,#DCE7F0 0 12px,#ECF2F7 12px 24px)",
+  "repeating-linear-gradient(135deg,#E2E8F0 0 12px,#EEF2F6 12px 24px)",
+];
 
 const SUGGESTIONS = [
   { icon: House, text: "2 BHK in Virar West under ₹60 lakh" },
@@ -30,6 +42,37 @@ function htmlToText(html: string) {
 function formatReply(text: string) {
   const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return esc.replace(/\*\*(.+?)\*\*/g, '<span class="font-semibold">$1</span>').replace(/\n/g, "<br/>");
+}
+
+function PropertyCardView({ p, stripe, onBook }: { p: PropertyCard; stripe: string; onBook: () => void }) {
+  const range = p.priceMin === p.priceMax ? `₹${p.priceMin} L` : `₹${p.priceMin}–${p.priceMax} L`;
+  return (
+    <div className="shrink-0 w-[240px] rounded-2xl border border-hx-line bg-white overflow-hidden shadow-hx">
+      <div className="relative h-[96px]" style={{ backgroundImage: stripe }}>
+        <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-hx-red text-white text-[10px] font-semibold">
+          <BadgeCheck className="w-2.5 h-2.5" /> RERA
+        </span>
+      </div>
+      <div className="p-3">
+        <div className="text-[14px] font-semibold tracking-tight truncate">{p.name}</div>
+        <div className="text-[11px] text-hx-muted truncate">{p.developer}</div>
+        <div className="mt-1.5 flex items-center gap-1 text-[11.5px] text-hx-slate">
+          <MapPin className="w-3 h-3" />
+          <span className="truncate">{p.locality} · {p.distanceToStationM} m to station</span>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="num text-[15px] font-bold tracking-tight">{range}</span>
+          <span className="text-[11px] text-hx-muted">· {p.bhk} · {p.facing}</span>
+        </div>
+        <button
+          onClick={onBook}
+          className="mt-3 w-full h-9 rounded-lg bg-hx-red text-white text-[12.5px] font-semibold inline-flex items-center justify-center gap-1.5 shadow-hx-red"
+        >
+          <CalendarPlus className="w-3.5 h-3.5" /> Book a visit
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function Chat() {
@@ -73,7 +116,7 @@ export default function Chat() {
       });
       const data = await res.json();
       setTyping(false);
-      setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: formatReply(data.reply || "") }]);
+      setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: formatReply(data.reply || ""), properties: data.properties }]);
     } catch {
       setTyping(false);
       setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: babaReplyFallback(txt) }]);
@@ -157,6 +200,13 @@ export default function Chat() {
                   <div className="flex-1 min-w-0 pt-0.5">
                     <div className="text-[12px] font-semibold text-hx-muted mb-1">Baba</div>
                     <div className="text-[15px] leading-relaxed text-hx-ink" dangerouslySetInnerHTML={{ __html: m.html }} />
+                    {m.properties && m.properties.length > 0 && (
+                      <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+                        {m.properties.map((p, i) => (
+                          <PropertyCardView key={p.id} p={p} stripe={STRIPES[i % STRIPES.length]} onBook={() => send(`I'd like to book a site visit for ${p.name}`)} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )

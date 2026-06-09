@@ -27,6 +27,48 @@ export async function getInventoryContext(): Promise<string | null> {
   }
 }
 
+export type PropertyCard = {
+  id: string;
+  name: string;
+  developer: string;
+  locality: string;
+  city: string;
+  bhk: string;
+  facing: string;
+  priceMin: number;
+  priceMax: number;
+  distanceToStationM: number;
+  reraId: string;
+  unitCount: number;
+};
+
+/**
+ * Find which real properties Baba referenced in its reply, so the UI can render
+ * visual cards. Matches by property name appearing in the text.
+ */
+export async function getMentionedProperties(text: string): Promise<PropertyCard[]> {
+  try {
+    const all = await prisma.property.findMany({ include: { _count: { select: { units: true } } } });
+    const low = text.toLowerCase();
+    // prefer longer names first so "Greenvalley Phase 2" wins over "Greenvalley"
+    const matched = all
+      .filter((p) => low.includes(p.name.toLowerCase()))
+      .sort((a, b) => b.name.length - a.name.length);
+    // dedupe overlapping names (drop a match whose name is contained in an already-picked one)
+    const picked: typeof matched = [];
+    for (const p of matched) {
+      if (!picked.some((q) => q.name.toLowerCase().includes(p.name.toLowerCase()))) picked.push(p);
+    }
+    return picked.slice(0, 3).map((p) => ({
+      id: p.id, name: p.name, developer: p.developer, locality: p.locality, city: p.city,
+      bhk: p.bhk, facing: p.facing, priceMin: p.priceMin, priceMax: p.priceMax,
+      distanceToStationM: p.distanceToStationM, reraId: p.reraId, unitCount: p._count.units,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Persist a chat turn: ensure a conversation (and its lead) exist, then append
  * the user + Baba messages. Best-effort — never throws into the request path.
