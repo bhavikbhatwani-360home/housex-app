@@ -45,9 +45,28 @@ All four are set in Vercel and confirmed live:
 - ✅ Clean AI chat (ChatGPT/Claude/Gemini style)
 - ✅ Real Baba (Claude) grounded in live DB inventory
 - ✅ Property cards inside chat
+- ✅ Buyer property detail page (`/property/[id]`) — real data, EMI, units, RERA
 - ✅ Site-visit booking (saves to console)
+- ✅ ₹999 token booking
 - ⬜ Onboarding → pre-fills a lead before chat
 - ⬜ Brochure / floor-plan delivery
+
+## Design-coverage — built for real
+- ✅ buyer-property → `/property/[id]`
+- ✅ pricing → `/pricing`
+- ✅ dev-lead-detail → `/developer/leads/[id]`
+- ✅ admin-developer (tenant 360) → `/admin/developers/[id]`
+- ✅ admin-analytics → `/admin/analytics`
+- ✅ dev-speed-to-lead → `/developer/speed-to-lead`
+
+## Design-coverage — remaining (build as REAL features, not demo screens)
+- ⬜ dev-offers — developer sends a price offer to a lead (needs Offer model)
+- ⬜ dev-offer-rules — auto-offer guardrails
+- ⬜ dev-automations — proactive Baba re-engagement
+- ⬜ admin-billing — plans/subscriptions (needs plan + billing)
+- ⬜ admin-bdm — sales pipeline to sign developers
+- ⬜ admin-onboarding — developer/RERA onboarding pipeline
+- ⬜ admin-roles — RBAC
 
 ## Phase 3 — Developer SaaS (multi-tenant) ✅ (core)
 - ✅ Developer signup / login (`/developer`)
