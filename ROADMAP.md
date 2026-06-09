@@ -57,10 +57,11 @@ All four are set in Vercel and confirmed live:
 - ⬜ Lead detail + reply (developer contacts the buyer)
 - ⬜ Edit / unpublish properties
 
-## Phase 4 — Money ⬜
-- ⬜ ₹999 token booking (block a unit)
-- ⬜ KYC (PAN / Aadhaar)
-- ⬜ Payment (Razorpay / UPI)
+## Phase 4 — Money 🔧
+- ✅ ₹999 token booking (block a unit) — flow + Booking record + console visibility
+- ✅ Quick KYC capture (name / phone / PAN)
+- 🔧 Payment — demo now; **real Razorpay = drop-in once keys are added** (next sub-step)
+- ⬜ Aadhaar / PAN verification (real KYC)
 - ⬜ Developer subscription / billing
 
 ## Phase 5 — Growth & smoothness ⬜
