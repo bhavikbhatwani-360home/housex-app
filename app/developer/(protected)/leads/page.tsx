@@ -1,4 +1,5 @@
 import { Users } from "lucide-react";
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getDeveloper } from "@/lib/devauth";
 
@@ -57,7 +58,9 @@ export default async function DevLeads() {
               <tbody>
                 {leads.map((l) => (
                   <tr key={l.id} className="border-b border-hx-line last:border-0 hover:bg-hx-bg/60">
-                    <td className="px-4 py-3 text-[13.5px] font-medium line-clamp-1">{l.intent || "Conversation"}</td>
+                    <td className="px-4 py-3">
+                      <Link href={`/developer/leads/${l.id}`} className="text-[13.5px] font-medium line-clamp-1 hover:text-hx-red">{l.intent || "Conversation"}</Link>
+                    </td>
                     <td className="px-4 py-3 text-[13px] text-hx-slate">{l.interestedProperty || "—"}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${statusColor[l.status] || "bg-hx-ink/10 text-hx-slate"}`}>{l.status}</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Sparkles, ArrowUp, Plus, House, IndianRupee, Compass, CalendarCheck, MapPin, BadgeCheck, CalendarPlus, X, Check, Video, Building2, ShieldCheck, Lock } from "lucide-react";
 
 type PropertyCard = {
@@ -48,14 +49,18 @@ function PropertyCardView({ p, stripe, onBook, onToken }: { p: PropertyCard; str
   const range = p.priceMin === p.priceMax ? `₹${p.priceMin} L` : `₹${p.priceMin}–${p.priceMax} L`;
   return (
     <div className="shrink-0 w-[240px] rounded-2xl border border-hx-line bg-white overflow-hidden shadow-hx">
-      <div className="relative h-[96px]" style={{ backgroundImage: stripe }}>
-        <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-hx-red text-white text-[10px] font-semibold">
-          <BadgeCheck className="w-2.5 h-2.5" /> RERA
-        </span>
-      </div>
+      <Link href={`/property/${p.id}`} className="block">
+        <div className="relative h-[96px]" style={{ backgroundImage: stripe }}>
+          <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-hx-red text-white text-[10px] font-semibold">
+            <BadgeCheck className="w-2.5 h-2.5" /> RERA
+          </span>
+        </div>
+      </Link>
       <div className="p-3">
-        <div className="text-[14px] font-semibold tracking-tight truncate">{p.name}</div>
-        <div className="text-[11px] text-hx-muted truncate">{p.developer}</div>
+        <Link href={`/property/${p.id}`} className="block">
+          <div className="text-[14px] font-semibold tracking-tight truncate hover:text-hx-red">{p.name}</div>
+          <div className="text-[11px] text-hx-muted truncate">{p.developer}</div>
+        </Link>
         <div className="mt-1.5 flex items-center gap-1 text-[11.5px] text-hx-slate">
           <MapPin className="w-3 h-3" />
           <span className="truncate">{p.locality} · {p.distanceToStationM} m to station</span>
