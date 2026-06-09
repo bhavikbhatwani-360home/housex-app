@@ -24,15 +24,14 @@ No jumping ahead. One thing at a time, verified, shipped.
 
 ---
 
-## Phase 0 — Foundation & access (DO THIS FIRST)
-The app can't be fully previewed until these 4 env vars are set in **Vercel → Settings → Environment Variables**, then **Redeploy**:
+## Phase 0 — Foundation & access ✅
+All four are set in Vercel and confirmed live:
+- ✅ `ANTHROPIC_API_KEY` — Baba's brain
+- ✅ `BABA_MODEL` = `claude-haiku-4-5`
+- ✅ `DATABASE_URL` — Railway Postgres (public URL), 8 properties seeded
+- ✅ `ADMIN_PASSWORD` — operator console login works
 
-- ⚠️ `ANTHROPIC_API_KEY` — Baba's brain (from console.anthropic.com)
-- ⚠️ `BABA_MODEL` = `claude-haiku-4-5` — keeps cost tiny
-- ⚠️ `DATABASE_URL` — Railway Postgres (makes Baba see all inventory + saves leads/visits)
-- ⚠️ `ADMIN_PASSWORD` — your operator console login
-
-**Until `DATABASE_URL` is set, Baba only sees 3 fallback listings** (this is why "1 BHK in Vasai" failed). This phase unblocks everything.
+**Confirmed:** `/admin` login works · `/admin/properties` shows 8 properties · DB persistent.
 
 ---
 
@@ -77,6 +76,6 @@ The app can't be fully previewed until these 4 env vars are set in **Vercel → 
 ---
 
 ## Right now → next 3 steps
-1. ⚠️ **Phase 0** — set the 4 env vars in Vercel + redeploy (unblocks live preview)
-2. ✅ Confirm the loop works: chat → cards → book visit → see it in `/admin`
-3. ⬜ Then **Phase 3 — Developer login** (turn it into real SaaS)
+1. ✅ **Phase 0** — env vars set, DB live, 8 properties seeded
+2. 🔧 Confirm the full loop: chat → cards → book visit → see it in `/admin`
+3. ⬜ **Phase 3 — Developer login** (turn it into real SaaS)
