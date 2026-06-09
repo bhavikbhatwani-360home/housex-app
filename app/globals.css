@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+/* ───────────────────────── HouseX design tokens ─────────────────────────
+   Ported from the design system. Tailwind v4 auto-generates utilities from
+   these (bg-hx-red, text-hx-ink, shadow-hx-red, rounded-hx-lg, font-deva…). */
+@theme {
+  /* brand + neutrals */
+  --color-hx-red: #E03943;
+  --color-hx-red-dark: #C32933;
+  --color-hx-ink: #0F172A;
+  --color-hx-slate: #334155;
+  --color-hx-muted: #64748B;
+  --color-hx-line: #E2E8F0;
+  --color-hx-bg: #FAFAFA;
+  --color-hx-surface: #FFFFFF;
+  --color-hx-success: #16A34A;
+  --color-hx-warning: #D97706;
+  --color-hx-danger: #DC2626;
+
+  /* elevation */
+  --shadow-hx-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-hx: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-hx-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+  --shadow-hx-lg: 0 12px 32px -8px rgba(15, 23, 42, 0.16);
+  --shadow-hx-red: 0 6px 20px -6px rgba(224, 57, 67, 0.40);
+
+  /* radii */
+  --radius-hx-sm: 8px;
+  --radius-hx: 12px;
+  --radius-hx-lg: 16px;
+}
+
+/* Map next/font CSS variables onto Tailwind's font utilities */
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-deva: var(--font-deva), var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+/* ───────────────────────── base ───────────────────────── */
+html,
+body {
+  height: 100%;
+}
+body {
+  font-feature-settings: "cv11", "ss01";
+  color: var(--color-hx-ink);
+  background:
+    radial-gradient(1200px 600px at 18% -10%, rgba(224, 57, 67, 0.06), transparent 60%),
+    radial-gradient(800px 600px at 110% 110%, rgba(15, 23, 42, 0.05), transparent 60%),
+    #f4f4f5;
+}
+
+/* ───────────────────────── helpers ───────────────────────── */
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.label-mono {
+  font-family: var(--font-mono);
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* phone frame — full-bleed on mobile, bezel mockup on desktop */
+.phone {
+  width: 100%;
+  height: 100dvh;
+  background: var(--color-hx-bg);
+  position: relative;
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  .phone {
+    width: 390px;
+    height: 844px;
+    border-radius: 48px;
+    box-shadow:
+      0 0 0 12px #0b0f18,
+      0 0 0 13px #2a2f3a,
+      0 30px 80px -10px rgba(15, 23, 42, 0.35),
+      0 12px 30px -6px rgba(15, 23, 42, 0.18);
+  }
+}
+
+/* selectable options */
+.opt {
+  transition: all 0.16s ease;
+}
+.opt.sel {
+  border-color: var(--color-hx-red);
+  background: rgba(224, 57, 67, 0.05);
+  box-shadow: 0 0 0 1px var(--color-hx-red) inset;
+}
+.opt.sel .tick {
+  opacity: 1;
+  transform: scale(1);
+}
+.tick {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: all 0.16s ease;
+}
+.seg.sel {
+  background: var(--color-hx-ink);
+  color: #fff;
+}
+
+/* animations */
+@keyframes ping-soft {
+  0% { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+.ping-soft {
+  animation: ping-soft 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+.dot {
+  animation: blink 1.2s infinite;
+}
+input[type="range"] {
+  accent-color: var(--color-hx-red);
+}
