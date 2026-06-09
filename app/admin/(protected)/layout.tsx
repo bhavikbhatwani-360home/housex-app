@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Users, Building2, MessageSquare, CalendarCheck, Lock, Briefcase } from "lucide-react";
+import { Users, Building2, MessageSquare, CalendarCheck, Lock, Briefcase, BarChart3 } from "lucide-react";
 import { isAdmin } from "@/lib/admin";
 import LogoutButton from "../LogoutButton";
 
@@ -29,6 +29,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
           <NavLink href="/admin/bookings" icon={<Lock className="w-4 h-4" />}>Token bookings</NavLink>
           <NavLink href="/admin/properties" icon={<Building2 className="w-4 h-4" />}>Properties</NavLink>
           <NavLink href="/admin/developers" icon={<Briefcase className="w-4 h-4" />}>Developers</NavLink>
+          <NavLink href="/admin/analytics" icon={<BarChart3 className="w-4 h-4" />}>Analytics</NavLink>
           <a href="/chat" target="_blank" className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium text-hx-slate hover:bg-hx-bg transition-colors">
             <MessageSquare className="w-4 h-4" /> Open Baba chat ↗
           </a>

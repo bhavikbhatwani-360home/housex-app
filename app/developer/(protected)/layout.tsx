@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Users, CalendarCheck, Building2, MessageSquare, Lock } from "lucide-react";
+import { LayoutDashboard, Users, CalendarCheck, Building2, MessageSquare, Lock, Zap } from "lucide-react";
 import { getDeveloper } from "@/lib/devauth";
 import DevLogoutButton from "../DevLogoutButton";
 
@@ -25,6 +25,7 @@ export default async function DeveloperLayout({ children }: { children: React.Re
         </div>
         <nav className="flex-1 p-2.5 space-y-0.5">
           <NavLink href="/developer" icon={<LayoutDashboard className="w-4 h-4" />}>Dashboard</NavLink>
+          <NavLink href="/developer/speed-to-lead" icon={<Zap className="w-4 h-4" />}>Speed to lead</NavLink>
           <NavLink href="/developer/leads" icon={<Users className="w-4 h-4" />}>Leads</NavLink>
           <NavLink href="/developer/visits" icon={<CalendarCheck className="w-4 h-4" />}>Site visits</NavLink>
           <NavLink href="/developer/bookings" icon={<Lock className="w-4 h-4" />}>Token bookings</NavLink>
