@@ -68,13 +68,23 @@ All four are set in Vercel and confirmed live:
 - ⬜ admin-onboarding — developer/RERA onboarding pipeline
 - ⬜ admin-roles — RBAC
 
-## Phase 3 — Developer SaaS (multi-tenant) ✅ (core)
+## Phase 3 — Developer SaaS (multi-tenant) ✅
 - ✅ Developer signup / login (`/developer`)
-- ✅ Each developer sees only THEIR leads / properties / visits
-- ✅ Lead routing — a visit on a developer's property routes the lead to them
-- ✅ Developer dashboard (scoped stats)
-- ⬜ Lead detail + reply (developer contacts the buyer)
-- ⬜ Edit / unpublish properties
+- ✅ Each developer sees only THEIR leads / properties / visits / bookings
+- ✅ Lead routing — interest in a developer's property routes the lead to them
+- ✅ Developer dashboard + speed-to-lead
+- ✅ Lead detail with **two-way buyer messaging** (replies land in Baba chat)
+- ✅ **Rate offers** — send ₹ offer → buyer Accept/Counter/Decline in chat
+- ✅ Add / edit / delete properties
+- ✅ Team members + roles (owner / manager / agent)
+- ⬜ Developer Offers list page (offers work; no dedicated list yet)
+
+## Phase 4 — Money 🔧 (paused until launch)
+- ✅ **Rate offers** (free negotiation — the launch money-path)
+- ⏸️ ₹999 token — built, **removed from buyer flow for now** (re-enable post-launch)
+- ⬜ Real Razorpay (wire keys later)
+- ⬜ Real KYC (DigiLocker / PAN)
+- ⬜ Developer subscription / billing
 
 ## Phase 4 — Money 🔧
 - ✅ ₹999 token booking (block a unit) — flow + Booking record + console visibility
@@ -97,7 +107,17 @@ All four are set in Vercel and confirmed live:
 
 ---
 
-## Right now → next 3 steps
-1. ✅ **Phase 0** — env vars set, DB live, 8 properties seeded
-2. 🔧 Confirm the full loop: chat → cards → book visit → see it in `/admin`
-3. ⬜ **Phase 3 — Developer login** (turn it into real SaaS)
+## Right now → path to launch
+**Built & working:** the full loop — Buyer → Baba → property page → book visit → lead →
+developer replies + sends rate offers → buyer accepts/counters/declines.
+
+**Pending for a real pilot launch (in order):**
+1. ⬜ **Polish + full QA pass** (every screen, every flow, on a real phone)
+2. ⬜ **Notifications** — WhatsApp/email so buyers see replies & offers when not in the app
+3. ⬜ **Onboarding → save a lead** (capture intent before chat)
+4. ⬜ **Legal** — terms, privacy, DPDP consent
+5. ⬜ **Point houseX.ai** at the app
+6. ⬜ **Onboard 1–2 pilot developers**
+
+**Later (post-launch):** Razorpay + ₹999 token · real KYC · proactive Baba · compare/shortlist ·
+admin billing/BDM/onboarding/roles screens · buyer accounts.
