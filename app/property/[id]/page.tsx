@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -6,8 +7,31 @@ import {
   FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
+import ShareButton from "./ShareButton";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  try {
+    const p = await prisma.property.findUnique({
+      where: { id },
+      select: { name: true, developer: true, locality: true, city: true, priceMin: true, priceMax: true, bhk: true, images: true, description: true },
+    });
+    if (!p) return { title: "Property — HouseX" };
+    const range = p.priceMin === p.priceMax ? `₹${p.priceMin} L` : `₹${p.priceMin}–${p.priceMax} L`;
+    const title = `${p.name} — ${range} · ${p.bhk} in ${p.locality}`;
+    const description = p.description || `${p.bhk} by ${p.developer} in ${p.locality}, ${p.city}. RERA-verified on HouseX.`;
+    return {
+      title,
+      description,
+      openGraph: { title, description, type: "website", images: p.images.length ? [p.images[0]] : undefined },
+      twitter: { card: "summary_large_image", title, description },
+    };
+  } catch {
+    return { title: "Property — HouseX" };
+  }
+}
 
 function emiPerMonth(priceLakh: number) {
   const P = priceLakh * 100000;
@@ -102,6 +126,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           <div className="text-[14px] font-semibold tracking-tight truncate">{p.name}</div>
           <div className="text-[11px] text-hx-muted truncate">{p.developer}</div>
         </div>
+        <ShareButton title={`${p.name} — ${range} · ${p.bhk} in ${p.locality} · HouseX`} />
       </header>
 
       <div className="max-w-2xl mx-auto">
