@@ -17,9 +17,20 @@ async function getProperties() {
   }
 }
 
-export default async function PropertiesPage() {
-  const { props, dbError } = await getProperties();
-  const pending = props.filter((p) => p.status !== "Live").length;
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "To enrich & approve" },
+  { key: "live", label: "Live" },
+];
+
+export default async function PropertiesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  const { status: filter = "all" } = await searchParams;
+  const { props: allProps, dbError } = await getProperties();
+  const pending = allProps.filter((p) => p.status !== "Live").length;
+  const props =
+    filter === "pending" ? allProps.filter((p) => p.status !== "Live")
+    : filter === "live" ? allProps.filter((p) => p.status === "Live")
+    : allProps;
 
   return (
     <div>
@@ -42,6 +53,26 @@ export default async function PropertiesPage() {
           </Link>
         </div>
       </header>
+
+      {!dbError && (
+        <div className="px-6 pt-4 flex items-center gap-1.5">
+          {FILTERS.map((t) => {
+            const active = filter === t.key || (t.key === "all" && filter === "all");
+            return (
+              <Link
+                key={t.key}
+                href={t.key === "all" ? "/admin/properties" : `/admin/properties?status=${t.key}`}
+                className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-medium transition-colors ${active ? "bg-hx-ink text-white" : "text-hx-slate hover:bg-hx-bg"}`}
+              >
+                {t.label}
+                {t.key === "pending" && pending > 0 && (
+                  <span className={`num text-[10.5px] font-semibold rounded-full px-1.5 py-0.5 ${active ? "bg-white/20" : "bg-hx-warning/15 text-hx-warning"}`}>{pending}</span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       <div className="p-6">
         {dbError ? (

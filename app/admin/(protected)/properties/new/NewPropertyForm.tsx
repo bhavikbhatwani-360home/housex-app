@@ -26,13 +26,14 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function NewPropertyForm({
-  developers, initial, initialUnits, propertyId, initialDeveloperId,
+  developers, initial, initialUnits, propertyId, initialDeveloperId, nextPendingId,
 }: {
   developers: DevOption[];
   initial?: Partial<FormState>;
   initialUnits?: UnitRow[];
   propertyId?: string;
   initialDeveloperId?: string;
+  nextPendingId?: string | null;
 }) {
   const router = useRouter();
   const isEdit = Boolean(propertyId);
@@ -55,6 +56,14 @@ export default function NewPropertyForm({
   const [plans, setPlans] = useState<string[]>([]);
 
   // Resize an image client-side to keep stored photos light (~1600px JPEG).
+  const readAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error("read failed"));
+      r.readAsDataURL(file);
+    });
+
   const resizeImage = (file: File, maxDim = 1600, quality = 0.82) =>
     new Promise<string>((resolve, reject) => {
       const img = new window.Image();
@@ -82,11 +91,24 @@ export default function NewPropertyForm({
     setAiBusy(true);
     try {
       const fileArr = Array.from(files).slice(0, 8);
-      const images = await Promise.all(fileArr.map((f) => resizeImage(f)));
+      const pdfFile = fileArr.find((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+
+      // A PDF goes to Claude as a document (it reads every page); photos go as
+      // images (and get classified for the gallery).
+      let images: string[] = [];
+      let payload: { pdf?: string; images?: string[] };
+      if (pdfFile) {
+        const pdf = await readAsDataUrl(pdfFile);
+        payload = { pdf };
+      } else {
+        images = await Promise.all(fileArr.map((f) => resizeImage(f)));
+        payload = { images };
+      }
+
       const res = await fetch("/api/admin/extract-listing", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ images }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -98,6 +120,7 @@ export default function NewPropertyForm({
       // Attach photos the AI marked as renders/maps to the gallery, and floor
       // plans to the plans list. Cost sheets are kept for data only. If the AI
       // didn't classify, fall back to treating everything as a gallery photo.
+      // (PDFs fill data only — no page images to attach.)
       const kinds: Record<number, string> = {};
       if (Array.isArray(l.imageKinds)) for (const k of l.imageKinds) kinds[k.index] = k.kind;
       const gallery: string[] = [];
@@ -172,8 +195,7 @@ export default function NewPropertyForm({
     ? developers.find((d) => d.id === developerId)?.company || ""
     : f.developer || "Developer";
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const save = async (goNext: boolean) => {
     setError("");
     setBusy(true);
     try {
@@ -198,7 +220,7 @@ export default function NewPropertyForm({
       });
       const data = await res.json();
       if (res.ok) {
-        router.push("/admin/properties");
+        router.push(goNext && nextPendingId ? `/admin/properties/${nextPendingId}/edit` : "/admin/properties");
         router.refresh();
       } else setError(data.error || "Could not save.");
     } catch {
@@ -208,6 +230,11 @@ export default function NewPropertyForm({
     }
   };
 
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    save(false);
+  };
+
   return (
     <div>
       <header className="h-14 border-b border-hx-line bg-white flex items-center px-6 gap-3 sticky top-0 z-10">
@@ -215,9 +242,16 @@ export default function NewPropertyForm({
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <h1 className="text-[16px] font-semibold tracking-tight">{isEdit ? "Edit property" : "Add property"}</h1>
-        <button form="adminpropform" disabled={busy} className="ml-auto h-9 px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-40">
-          {busy ? "Saving…" : isEdit ? "Save changes" : "Publish"}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button form="adminpropform" disabled={busy} className="h-9 px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-40">
+            {busy ? "Saving…" : isEdit ? "Save changes" : "Publish"}
+          </button>
+          {isEdit && nextPendingId && (
+            <button type="button" onClick={() => save(true)} disabled={busy} className="h-9 px-4 rounded-lg bg-hx-ink text-white text-[13px] font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">
+              Save &amp; next →
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 max-w-5xl">
@@ -231,13 +265,13 @@ export default function NewPropertyForm({
               <div className="min-w-0 flex-1">
                 <div className="text-[13.5px] font-semibold">Auto-fill from brochure</div>
                 <p className="text-[12px] text-hx-muted mt-0.5 leading-relaxed">
-                  Upload photos of the brochure or price list. HouseX AI reads them and fills the form below — then you review &amp; edit (especially price) before publishing.
+                  Drop the brochure PDF (or photos of it). HouseX AI reads every page and fills the form below — then you review &amp; edit (especially price) before publishing.
                 </p>
                 <div className="mt-3 flex items-center gap-2.5 flex-wrap">
                   <input
                     ref={fileRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
+                    accept="application/pdf,image/jpeg,image/png,image/webp"
                     multiple
                     onChange={(e) => autofill(e.target.files)}
                     className="hidden"
@@ -249,9 +283,9 @@ export default function NewPropertyForm({
                     className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-50"
                   >
                     {aiBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                    {aiBusy ? "Reading brochure…" : "Upload brochure photos"}
+                    {aiBusy ? "Reading brochure…" : "Upload brochure PDF or photos"}
                   </button>
-                  <span className="text-[11px] text-hx-muted">JPG / PNG · up to 8 images</span>
+                  <span className="text-[11px] text-hx-muted">PDF, or JPG/PNG photos (up to 8)</span>
                 </div>
 
                 {aiError && (

@@ -10,11 +10,15 @@ const numStr = (n: number | null | undefined) => (n && n > 0 ? String(n) : "");
 export default async function EditPropertyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [p, developers] = await Promise.all([
+  const [p, developers, next] = await Promise.all([
     prisma.property
       .findUnique({ where: { id }, include: { units: { orderBy: { floor: "asc" } } } })
       .catch(() => null),
     prisma.developer.findMany({ select: { id: true, company: true }, orderBy: { company: "asc" } }).catch(() => []),
+    // the next listing still needing work — powers "Save & next"
+    prisma.property
+      .findFirst({ where: { status: { not: "Live" }, id: { not: id } }, orderBy: { createdAt: "desc" }, select: { id: true } })
+      .catch(() => null),
   ]);
 
   if (!p) notFound();
@@ -58,6 +62,7 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
       initialUnits={initialUnits}
       propertyId={p.id}
       initialDeveloperId={p.developerId ?? ""}
+      nextPendingId={next?.id ?? null}
     />
   );
 }

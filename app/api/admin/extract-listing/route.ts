@@ -9,6 +9,7 @@ const MODEL = process.env.LISTING_MODEL || "claude-opus-4-8";
 
 const MAX_IMAGES = 8;
 const MAX_BYTES = 5 * 1024 * 1024; // ~5MB per image after base64 decode
+const MAX_PDF_BYTES = 28 * 1024 * 1024; // Claude accepts PDFs up to ~32MB
 
 type ImgIn = { media_type: string; data: string };
 
@@ -20,6 +21,15 @@ function parseDataUrl(s: unknown): ImgIn | null {
   const data = m[2];
   if ((data.length * 3) / 4 > MAX_BYTES) return null;
   return { media_type: m[1], data };
+}
+
+// Parse a base64 PDF data URL.
+function parsePdf(s: unknown): string | null {
+  if (typeof s !== "string") return null;
+  const m = s.match(/^data:application\/pdf;base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) return null;
+  if ((m[1].length * 3) / 4 > MAX_PDF_BYTES) return null;
+  return m[1];
 }
 
 const SYSTEM = `You are HouseX's listing assistant. You read photos of Indian real-estate brochures, price lists, and project sheets, and extract the project details into structured data for a human manager to review.
@@ -100,23 +110,30 @@ export async function POST(req: Request) {
     return Response.json({ error: "AI isn't connected — add ANTHROPIC_API_KEY to enable brochure auto-fill." }, { status: 503 });
 
   let images: ImgIn[] = [];
+  let pdf: string | null = null;
   try {
     const body = await req.json();
     const raw = Array.isArray(body?.images) ? body.images : [];
     images = raw.slice(0, MAX_IMAGES).map(parseDataUrl).filter((x: ImgIn | null): x is ImgIn => x !== null);
+    pdf = parsePdf(body?.pdf);
   } catch {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
-  if (images.length === 0)
-    return Response.json({ error: "Upload at least one clear brochure or price-list photo (JPG/PNG, under 5MB)." }, { status: 400 });
+  if (images.length === 0 && !pdf)
+    return Response.json({ error: "Upload a brochure PDF, or clear photos (JPG/PNG, under 5MB each)." }, { status: 400 });
 
-  const content: Anthropic.ContentBlockParam[] = [
-    ...images.map((img): Anthropic.ContentBlockParam => ({
-      type: "image",
-      source: { type: "base64", media_type: img.media_type as "image/jpeg", data: img.data },
-    })),
-    { type: "text", text: "Extract this project's listing details from the image(s) above into the required JSON. Remember: prices in lakhs, only what you can read, flag anything unclear in notes." },
-  ];
+  const content: Anthropic.ContentBlockParam[] = pdf
+    ? [
+        { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf } },
+        { type: "text", text: "Extract this project's listing details from the brochure PDF above into the required JSON. Read every page — especially the cost sheet / price list (list each floor/unit price). Prices in lakhs, only what you can read, flag anything unclear in notes. (imageKinds can be empty for a PDF.)" },
+      ]
+    : [
+        ...images.map((img): Anthropic.ContentBlockParam => ({
+          type: "image",
+          source: { type: "base64", media_type: img.media_type as "image/jpeg", data: img.data },
+        })),
+        { type: "text", text: "Extract this project's listing details from the image(s) above into the required JSON. Remember: prices in lakhs, only what you can read, flag anything unclear in notes." },
+      ];
 
   try {
     const client = new Anthropic();
