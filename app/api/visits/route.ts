@@ -30,6 +30,17 @@ export async function POST(req: Request) {
     return Response.json({ error: "Enter your name and a valid phone number." }, { status: 400 });
   }
 
+  // Property-page bookings (no chat conversation) must verify the phone via OTP
+  // — this keeps every developer lead a real, reachable one. Chat bookings keep
+  // their existing flow.
+  if (!conversationId) {
+    const digits = buyerPhone.replace(/\D/g, "").slice(-10);
+    const verified = await prisma.otpCode
+      .findFirst({ where: { phone: digits, verified: true, expiresAt: { gt: new Date() } } })
+      .catch(() => null);
+    if (!verified) return Response.json({ error: "Please verify your phone number first." }, { status: 403 });
+  }
+
   try {
     // resolve / create the lead via the conversation so the visit attaches to it
     let leadId: string | undefined;

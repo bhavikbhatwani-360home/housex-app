@@ -100,6 +100,18 @@ model ListingClaim {
   createdAt  DateTime @default(now())
 }
 
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String // last-10-digits, normalized
+  code      String
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
 model Unit {
   id         String   @id @default(cuid())
   propertyId String

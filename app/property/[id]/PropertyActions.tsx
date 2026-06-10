@@ -116,10 +116,15 @@ function BookingSheet({ propertyId, propertyName, locality, onClose }: { propert
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [ref, setRef] = useState<string | null>(null);
+  // phone verification
+  const [otpStage, setOtpStage] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [verified, setVerified] = useState(false);
+  const [devCode, setDevCode] = useState<string | null>(null);
   const valid = name.trim().length > 1 && phone.replace(/\D/g, "").length >= 10;
   const day = days[dateIdx];
 
-  const submit = async () => {
+  const book = async () => {
     setError(""); setBusy(true);
     try {
       const res = await fetch("/api/visits", {
@@ -132,6 +137,42 @@ function BookingSheet({ propertyId, propertyName, locality, onClose }: { propert
       else setError(data.error || "Could not book.");
     } catch {
       setError("Something went wrong. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Confirm → verify the phone (OTP) the first time, then book.
+  const confirm = async () => {
+    if (verified) return book();
+    setError(""); setBusy(true);
+    try {
+      const res = await fetch("/api/otp/send", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) { setOtpStage(true); setDevCode(data.devCode || null); }
+      else setError(data.error || "Could not send code.");
+    } catch {
+      setError("Couldn't send the code. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    setError(""); setBusy(true);
+    try {
+      const res = await fetch("/api/otp/verify", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim(), code: otp }),
+      });
+      const data = await res.json();
+      if (res.ok) { setVerified(true); setOtpStage(false); await book(); }
+      else setError(data.error || "Wrong code.");
+    } catch {
+      setError("Couldn't verify. Try again.");
     } finally {
       setBusy(false);
     }
@@ -253,16 +294,36 @@ function BookingSheet({ propertyId, propertyName, locality, onClose }: { propert
 
       <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Your details — so the developer can confirm</div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50" />
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" inputMode="tel" className="h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" disabled={otpStage} className="h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50 disabled:opacity-60" />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" inputMode="tel" disabled={otpStage} className="h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50 disabled:opacity-60" />
       </div>
 
       {error && <p className="mt-2 text-[12.5px] text-hx-danger">{error}</p>}
 
-      <button onClick={submit} disabled={!valid || busy} className="mt-4 w-full h-12 rounded-2xl bg-hx-red text-white text-[15px] font-semibold shadow-hx-red inline-flex items-center justify-center gap-2 disabled:opacity-40">
-        {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />} Confirm visit
-      </button>
-      <p className="mt-2 text-center text-[11px] text-hx-muted">Your number is shared only with this developer — never with brokers.</p>
+      {otpStage ? (
+        <div className="mt-4 rounded-2xl border border-hx-red/30 bg-hx-red/[0.03] p-4">
+          <div className="text-[13px] font-semibold">Verify your phone</div>
+          <p className="text-[12px] text-hx-muted mt-0.5">Enter the 6-digit code sent to {phone}.</p>
+          {devCode && <p className="mt-1.5 text-[12px] text-hx-warning">Test mode — your code is <span className="num font-bold">{devCode}</span> (SMS goes live once a provider is set up).</p>}
+          <input
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            inputMode="numeric" placeholder="------"
+            className="mt-2.5 w-full h-12 px-3.5 rounded-xl border border-hx-line bg-white text-center text-[20px] tracking-[0.4em] num outline-none focus:border-hx-red/50"
+          />
+          <button onClick={verifyOtp} disabled={otp.length !== 6 || busy} className="mt-3 w-full h-12 rounded-2xl bg-hx-red text-white text-[15px] font-semibold shadow-hx-red inline-flex items-center justify-center gap-2 disabled:opacity-40">
+            {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />} Verify &amp; book
+          </button>
+          <button onClick={() => { setOtpStage(false); setOtp(""); setError(""); }} className="mt-2 w-full text-[12.5px] font-semibold text-hx-slate">Change number</button>
+        </div>
+      ) : (
+        <>
+          <button onClick={confirm} disabled={!valid || busy} className="mt-4 w-full h-12 rounded-2xl bg-hx-red text-white text-[15px] font-semibold shadow-hx-red inline-flex items-center justify-center gap-2 disabled:opacity-40">
+            {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />} Confirm visit
+          </button>
+          <p className="mt-2 text-center text-[11px] text-hx-muted">We&apos;ll text a code to verify your number — shared only with this developer, never brokers.</p>
+        </>
+      )}
     </SheetShell>
   );
 }
