@@ -7,6 +7,9 @@ import { prisma } from "./db";
 export async function getInventoryContext(): Promise<string | null> {
   try {
     const props = await prisma.property.findMany({
+      // Buyers/AI only ever see approved (Live) listings — Draft/Pending stay
+      // internal until a manager approves them.
+      where: { status: "Live" },
       include: { units: { where: { available: true }, orderBy: { floor: "asc" } } },
       orderBy: { priceMin: "asc" },
       take: 40,
@@ -48,7 +51,7 @@ export type PropertyCard = {
  */
 export async function getMentionedProperties(text: string): Promise<PropertyCard[]> {
   try {
-    const all = await prisma.property.findMany({ include: { _count: { select: { units: true } } } });
+    const all = await prisma.property.findMany({ where: { status: "Live" }, include: { _count: { select: { units: true } } } });
     const low = text.toLowerCase();
     // prefer longer names first so "Greenvalley Phase 2" wins over "Greenvalley"
     const matched = all

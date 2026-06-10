@@ -1,6 +1,7 @@
-import { Building2, AlertCircle, BadgeCheck, Plus } from "lucide-react";
+import { Building2, AlertCircle, Plus } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import StatusControl from "./StatusControl";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ async function getProperties() {
 
 export default async function PropertiesPage() {
   const { props, dbError } = await getProperties();
+  const pending = props.filter((p) => p.status !== "Live").length;
 
   return (
     <div>
@@ -25,6 +27,11 @@ export default async function PropertiesPage() {
         <h1 className="text-[16px] font-semibold tracking-tight flex items-center gap-2">
           <Building2 className="w-4 h-4 text-hx-red" /> Properties
           <span className="num text-[12px] font-medium text-hx-muted">{props.length}</span>
+          {pending > 0 && (
+            <span className="num text-[11px] font-semibold text-hx-warning bg-hx-warning/10 rounded-full px-2 py-0.5">
+              {pending} awaiting review
+            </span>
+          )}
         </h1>
         <Link href="/admin/properties/new" className="ml-auto inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
           <Plus className="w-4 h-4" /> Add property
@@ -52,9 +59,7 @@ export default async function PropertiesPage() {
                     <div className="text-[15px] font-semibold tracking-tight truncate">{p.name}</div>
                     <div className="text-[12px] text-hx-muted truncate">{p.developer} · {p.locality}</div>
                   </div>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-hx-success/10 text-hx-success text-[10.5px] font-semibold shrink-0">
-                    <BadgeCheck className="w-3 h-3" /> {p.status}
-                  </span>
+                  <StatusControl id={p.id} status={p.status} />
                 </div>
                 <div className="mt-2 flex items-center gap-3 text-[12.5px] text-hx-slate">
                   <span className="num font-semibold">₹{p.priceMin}–{p.priceMax} L</span>

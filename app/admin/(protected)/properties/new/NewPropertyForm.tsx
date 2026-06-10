@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 type UnitRow = { floor: string; priceLakh: string; facing: string; carpetSqft: string };
 type DevOption = { id: string; company: string };
@@ -24,6 +24,81 @@ export default function NewPropertyForm({ developers }: { developers: DevOption[
   const [units, setUnits] = useState<UnitRow[]>([{ floor: "", priceLakh: "", facing: "East", carpetSqft: "" }]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // ── AI brochure auto-fill ──
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiResult, setAiResult] = useState<{ confidence: string; notes: string } | null>(null);
+
+  const readAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error("read failed"));
+      r.readAsDataURL(file);
+    });
+
+  const autofill = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setAiError("");
+    setAiResult(null);
+    setAiBusy(true);
+    try {
+      const images = await Promise.all(Array.from(files).slice(0, 8).map(readAsDataUrl));
+      const res = await fetch("/api/admin/extract-listing", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ images }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAiError(data.error || "Couldn't read the brochure.");
+        return;
+      }
+      const l = data.listing;
+      const okBhk = BHKS.includes(l.bhk) ? l.bhk : f.bhk;
+      const okFacing = FACINGS.includes(l.facing) ? l.facing : f.facing;
+      // AI fills everything EXCEPT price approval — a manager reviews before it goes live.
+      setF((p) => ({
+        ...p,
+        name: l.name || p.name,
+        developer: developerId ? p.developer : l.developer || p.developer,
+        city: l.city || p.city,
+        locality: l.locality || p.locality,
+        bhk: okBhk,
+        facing: okFacing,
+        carpetSqft: l.carpetSqft ? String(l.carpetSqft) : p.carpetSqft,
+        distanceToStationM: l.distanceToStationM ? String(l.distanceToStationM) : p.distanceToStationM,
+        reraId: l.reraId || p.reraId,
+        possession: l.possession || p.possession,
+        description: l.description || p.description,
+        amenities: Array.isArray(l.amenities) && l.amenities.length ? l.amenities.join(", ") : p.amenities,
+        nearby: Array.isArray(l.nearby) && l.nearby.length ? l.nearby.join("\n") : p.nearby,
+        totalTowers: l.totalTowers ? String(l.totalTowers) : p.totalTowers,
+        totalUnits: l.totalUnits ? String(l.totalUnits) : p.totalUnits,
+        projectArea: l.projectArea || p.projectArea,
+        totalFloors: l.totalFloors || p.totalFloors,
+        status: "Pending", // AI drafts are never auto-live — manager must approve
+      }));
+      if (Array.isArray(l.units) && l.units.length) {
+        setUnits(
+          l.units.map((u: { floor?: number; priceLakh?: number; facing?: string; carpetSqft?: number }) => ({
+            floor: u.floor ? String(u.floor) : "",
+            priceLakh: u.priceLakh ? String(u.priceLakh) : "",
+            facing: FACINGS.includes(u.facing || "") ? (u.facing as string) : okFacing,
+            carpetSqft: u.carpetSqft ? String(u.carpetSqft) : "",
+          }))
+        );
+      }
+      setAiResult({ confidence: l.confidence || "medium", notes: l.notes || "" });
+    } catch {
+      setAiError("Something went wrong reading the photos. Try again or fill the form manually.");
+    } finally {
+      setAiBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF((p) => ({ ...p, [k]: e.target.value }));
@@ -93,6 +168,59 @@ export default function NewPropertyForm({ developers }: { developers: DevOption[
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 max-w-5xl">
         <form id="adminpropform" onSubmit={submit} className="space-y-5">
+          {/* ── AI brochure auto-fill ── */}
+          <div className="rounded-xl border border-hx-red/30 bg-hx-red/[0.03] p-5">
+            <div className="flex items-start gap-3">
+              <span className="w-9 h-9 rounded-lg bg-hx-red/10 text-hx-red inline-flex items-center justify-center shrink-0">
+                <Sparkles className="w-4.5 h-4.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13.5px] font-semibold">Auto-fill from brochure</div>
+                <p className="text-[12px] text-hx-muted mt-0.5 leading-relaxed">
+                  Upload photos of the brochure or price list. HouseX AI reads them and fills the form below — then you review &amp; edit (especially price) before publishing.
+                </p>
+                <div className="mt-3 flex items-center gap-2.5 flex-wrap">
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={(e) => autofill(e.target.files)}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={aiBusy}
+                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-50"
+                  >
+                    {aiBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                    {aiBusy ? "Reading brochure…" : "Upload brochure photos"}
+                  </button>
+                  <span className="text-[11px] text-hx-muted">JPG / PNG · up to 8 images</span>
+                </div>
+
+                {aiError && (
+                  <div className="mt-3 flex items-start gap-2 text-[12.5px] text-hx-danger">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {aiError}
+                  </div>
+                )}
+                {aiResult && (
+                  <div className="mt-3 rounded-lg border border-hx-line bg-white p-3">
+                    <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-hx-success">
+                      <CheckCircle2 className="w-4 h-4" /> Draft filled below — please review
+                      <span className={`ml-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded ${aiResult.confidence === "high" ? "bg-hx-success/10 text-hx-success" : aiResult.confidence === "low" ? "bg-hx-danger/10 text-hx-danger" : "bg-hx-warning/10 text-hx-warning"}`}>
+                        {aiResult.confidence} confidence
+                      </span>
+                    </div>
+                    {aiResult.notes && <p className="mt-1.5 text-[12px] text-hx-slate leading-relaxed">⚠️ {aiResult.notes}</p>}
+                    <p className="mt-1.5 text-[11.5px] text-hx-muted">Status set to <strong>Pending</strong> — verify the price &amp; offers, then set Status to <strong>Live</strong> to approve.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           <Card title="On behalf of developer">
             <label className="block">
               <span className="text-[12px] font-medium text-hx-slate mb-1 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-hx-red" /> Developer account</span>

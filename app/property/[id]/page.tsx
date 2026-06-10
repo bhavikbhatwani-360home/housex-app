@@ -79,7 +79,9 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   } catch {
     p = null;
   }
-  if (!p) notFound();
+  // Only approved (Live) listings are publicly viewable — a Draft/Pending
+  // listing 404s even on a direct link until a manager approves it.
+  if (!p || p.status !== "Live") notFound();
 
   const range = p.priceMin === p.priceMax ? `₹${p.priceMin} L` : `₹${p.priceMin}–${p.priceMax} L`;
   const perSqft = p.carpetSqft > 0 ? Math.round((p.priceMin * 100000) / p.carpetSqft).toLocaleString("en-IN") : null;
