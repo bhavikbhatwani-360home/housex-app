@@ -41,7 +41,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
             </>
           )}
           <a href="/chat" target="_blank" className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium text-hx-slate hover:bg-hx-bg transition-colors">
-            <MessageSquare className="w-4 h-4" /> Open Baba chat ↗
+            <MessageSquare className="w-4 h-4" /> Open HouseX AI chat ↗
           </a>
         </nav>
         <div className="p-2.5 border-t border-hx-line">

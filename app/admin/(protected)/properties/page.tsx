@@ -39,7 +39,7 @@ export default async function PropertiesPage() {
               <div className="text-[14px] font-semibold">Database not connected yet</div>
               <p className="text-[13px] text-hx-muted mt-1 leading-relaxed">
                 Add <code className="font-mono text-[12px] bg-hx-bg px-1 rounded">DATABASE_URL</code> in Vercel and redeploy. The 8 seed
-                properties (and any you add) will appear here, and Baba will answer from them.
+                properties (and any you add) will appear here, and HouseX AI will answer from them.
               </p>
             </div>
           </div>

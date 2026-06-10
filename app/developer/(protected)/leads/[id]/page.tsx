@@ -69,12 +69,12 @@ export default async function DevLeadDetail({ params }: { params: Promise<{ id: 
                 </div>
               );
             }
-            // Baba (AI) — left side
+            // HouseX AI (AI) — left side
             return (
               <div key={m.id} className="flex gap-2.5">
                 <span className="w-6 h-6 rounded-md bg-hx-red inline-flex items-center justify-center shrink-0 mt-0.5"><Sparkles className="w-3 h-3 text-white" /></span>
                 <div className="max-w-[80%]">
-                  <div className="text-[10.5px] font-semibold text-hx-muted mb-0.5">Baba AI</div>
+                  <div className="text-[10.5px] font-semibold text-hx-muted mb-0.5">HouseX AI</div>
                   <div className="text-[14px] leading-relaxed text-hx-ink whitespace-pre-wrap">{m.content}</div>
                 </div>
               </div>
@@ -84,7 +84,7 @@ export default async function DevLeadDetail({ params }: { params: Promise<{ id: 
 
         <LeadReply leadId={lead.id} />
         <div className="mt-3"><SendOffer leadId={lead.id} /></div>
-        <p className="mt-2 text-[11.5px] text-hx-muted">Your reply &amp; offers appear directly in the buyer&apos;s Baba chat, as your company.</p>
+        <p className="mt-2 text-[11.5px] text-hx-muted">Your reply &amp; offers appear directly in the buyer&apos;s HouseX AI chat, as your company.</p>
       </div>
     </div>
   );

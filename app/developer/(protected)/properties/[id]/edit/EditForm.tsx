@@ -183,7 +183,7 @@ export default function EditForm({ initial }: { initial: PropertyInitial }) {
         </form>
 
         <div className="lg:sticky lg:top-20 h-fit">
-          <div className="text-[10.5px] uppercase tracking-wider text-hx-muted mb-2 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-hx-red" /> How Baba sees it</div>
+          <div className="text-[10.5px] uppercase tracking-wider text-hx-muted mb-2 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-hx-red" /> How HouseX AI sees it</div>
           <div className="rounded-xl border border-hx-line bg-white p-4">
             <div className="text-[15px] font-semibold tracking-tight">{f.name || "Project name"}</div>
             <div className="text-[12px] text-hx-muted">{f.locality || "Locality"}</div>

@@ -66,7 +66,7 @@ export default async function LeadsPage() {
               <div className="text-[14px] font-semibold">Database not connected yet</div>
               <p className="text-[13px] text-hx-muted mt-1 leading-relaxed">
                 Add <code className="font-mono text-[12px] bg-hx-bg px-1 rounded">DATABASE_URL</code> in Vercel and redeploy.
-                Once connected, every buyer who chats with Baba shows up here automatically.
+                Once connected, every buyer who chats with HouseX AI shows up here automatically.
               </p>
             </div>
           </div>
@@ -74,7 +74,7 @@ export default async function LeadsPage() {
           <div className="rounded-xl border border-hx-line bg-white p-10 text-center max-w-xl mx-auto">
             <span className="w-14 h-14 rounded-2xl bg-hx-red/8 text-hx-red inline-flex items-center justify-center mb-4"><Users className="w-7 h-7" /></span>
             <div className="text-[15px] font-semibold">No leads yet</div>
-            <p className="text-[13px] text-hx-muted mt-1">When buyers chat with Baba, their leads will appear here.</p>
+            <p className="text-[13px] text-hx-muted mt-1">When buyers chat with HouseX AI, their leads will appear here.</p>
           </div>
         ) : (
           <div className="rounded-xl border border-hx-line bg-white overflow-hidden">

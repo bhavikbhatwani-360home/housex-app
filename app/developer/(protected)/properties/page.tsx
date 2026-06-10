@@ -37,7 +37,7 @@ export default async function DevProperties() {
           <div className="rounded-xl border border-hx-line bg-white p-10 text-center max-w-xl mx-auto">
             <span className="w-14 h-14 rounded-2xl bg-hx-red/8 text-hx-red inline-flex items-center justify-center mb-4"><Building2 className="w-7 h-7" /></span>
             <div className="text-[15px] font-semibold">No properties yet</div>
-            <p className="text-[13px] text-hx-muted mt-1 mb-4">{canManage ? "Add your first project so Baba can start recommending it to buyers." : "No properties listed yet."}</p>
+            <p className="text-[13px] text-hx-muted mt-1 mb-4">{canManage ? "Add your first project so HouseX AI can start recommending it to buyers." : "No properties listed yet."}</p>
             {canManage && (
               <Link href="/developer/properties/new" className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
                 <Plus className="w-4 h-4" /> Add property

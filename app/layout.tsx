@@ -21,9 +21,9 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HouseX — Talk to Baba",
+  title: "HouseX — AI home search",
   description:
-    "Stop scrolling listings. Just talk to Baba. AI-powered home search for India.",
+    "Stop scrolling listings. Just talk to HouseX AI. AI-powered home search for India.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/assets/housex-icon-circle.png",

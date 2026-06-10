@@ -1,7 +1,7 @@
 {
-  "name": "HouseX — Talk to Baba",
+  "name": "HouseX — AI home search",
   "short_name": "HouseX",
-  "description": "Stop scrolling listings. Just talk to Baba. AI-powered home search for India.",
+  "description": "Stop scrolling listings. Just talk to HouseX AI. AI-powered home search for India.",
   "start_url": "/onboarding",
   "scope": "/",
   "display": "standalone",

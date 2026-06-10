@@ -8,11 +8,11 @@ export default function Privacy() {
     <LegalShell title="Privacy Policy" updated="June 2026">
       <section>
         <h2>1. What we collect</h2>
-        <p><strong>Buyers:</strong> your chat messages with Baba (to find homes for you), and — only when you book a site visit or respond to an offer — your name and phone number. <strong>Developers:</strong> account details (name, company, email, phone) and the listings you publish.</p>
+        <p><strong>Buyers:</strong> your chat messages with HouseX AI (to find homes for you), and — only when you book a site visit or respond to an offer — your name and phone number. <strong>Developers:</strong> account details (name, company, email, phone) and the listings you publish.</p>
       </section>
       <section>
         <h2>2. How we use it</h2>
-        <p>Chat messages are processed by our AI provider to generate Baba&apos;s replies and to match you with suitable properties. Your name and phone number are shared <strong>only with the specific developer</strong> whose property you chose to visit or negotiate on — never sold, never given to brokers, never used for unrelated marketing.</p>
+        <p>Chat messages are processed by our AI provider to generate HouseX AI&apos;s replies and to match you with suitable properties. Your name and phone number are shared <strong>only with the specific developer</strong> whose property you chose to visit or negotiate on — never sold, never given to brokers, never used for unrelated marketing.</p>
       </section>
       <section>
         <h2>3. DPDP Act compliance</h2>
@@ -24,7 +24,7 @@ export default function Privacy() {
       </section>
       <section>
         <h2>5. Third parties</h2>
-        <p>We use trusted processors to run the service: cloud hosting, database hosting, an AI model provider (for Baba&apos;s replies), and an email provider (for notifications). They process data solely on our instructions.</p>
+        <p>We use trusted processors to run the service: cloud hosting, database hosting, an AI model provider (for HouseX AI&apos;s replies), and an email provider (for notifications). They process data solely on our instructions.</p>
       </section>
       <section>
         <h2>6. Contact</h2>

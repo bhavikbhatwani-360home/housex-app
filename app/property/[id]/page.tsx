@@ -331,7 +331,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
       {/* sticky actions */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-hx-line px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="max-w-2xl mx-auto grid grid-cols-[1fr_auto] gap-2">
-          <Link href="/chat" className="h-11 rounded-xl bg-hx-ink text-white text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5"><MessageSquare className="w-4 h-4" /> Ask Baba about this</Link>
+          <Link href="/chat" className="h-11 rounded-xl bg-hx-ink text-white text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5"><MessageSquare className="w-4 h-4" /> Ask HouseX AI about this</Link>
           <Link href="/chat" className="h-11 px-4 rounded-xl bg-hx-red text-white text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 shadow-hx-red"><CalendarPlus className="w-4 h-4" /> Book a visit</Link>
         </div>
       </div>

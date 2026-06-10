@@ -41,7 +41,7 @@ export default async function DeveloperDashboard() {
               <div>
                 <div className="text-[15px] font-semibold">List your first project</div>
                 <p className="text-[13px] text-hx-muted mt-1 leading-relaxed max-w-md">
-                  Add a property with its floor-wise units and pricing. Baba will start recommending it to matching buyers
+                  Add a property with its floor-wise units and pricing. HouseX AI will start recommending it to matching buyers
                   immediately — and every interested buyer becomes a lead right here.
                 </p>
                 <Link href="/developer/properties/new" className="mt-3 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">

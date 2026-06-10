@@ -5,9 +5,9 @@
 ---
 
 ## Vision
-A chat-first, AI-powered real-estate platform for India. Buyers talk to **Baba** (AI) to find RERA-verified homes; developers get qualified leads. Revenue: developers pay for leads / subscription; buyers are free.
+A chat-first, AI-powered real-estate platform for India. Buyers talk to **HouseX AI** (AI) to find RERA-verified homes; developers get qualified leads. Revenue: developers pay for leads / subscription; buyers are free.
 
-**The core loop:** Buyer → Baba → real listings → book visit / pay token → captured lead → developer.
+**The core loop:** Buyer → HouseX AI → real listings → book visit / pay token → captured lead → developer.
 
 ---
 
@@ -26,7 +26,7 @@ No jumping ahead. One thing at a time, verified, shipped.
 
 ## Phase 0 — Foundation & access ✅
 All four are set in Vercel and confirmed live:
-- ✅ `ANTHROPIC_API_KEY` — Baba's brain
+- ✅ `ANTHROPIC_API_KEY` — HouseX AI's brain
 - ✅ `BABA_MODEL` = `claude-haiku-4-5`
 - ✅ `DATABASE_URL` — Railway Postgres (public URL), 8 properties seeded
 - ✅ `ADMIN_PASSWORD` — operator console login works
@@ -39,11 +39,11 @@ All four are set in Vercel and confirmed live:
 - ✅ Password-gated `/admin`
 - ✅ Leads list + full saved conversation
 - ✅ Site-visits list
-- ✅ Properties list + **Add property** form (feeds Baba's inventory)
+- ✅ Properties list + **Add property** form (feeds HouseX AI's inventory)
 
 ## Phase 2 — Buyer experience ✅ (core)
 - ✅ Clean AI chat (ChatGPT/Claude/Gemini style)
-- ✅ Real Baba (Claude) grounded in live DB inventory
+- ✅ Real HouseX AI (Claude) grounded in live DB inventory
 - ✅ Property cards inside chat
 - ✅ Buyer property detail page (`/property/[id]`) — real data, EMI, units, RERA
 - ✅ Site-visit booking (saves to console)
@@ -62,7 +62,7 @@ All four are set in Vercel and confirmed live:
 ## Design-coverage — remaining (build as REAL features, not demo screens)
 - ⬜ dev-offers — developer sends a price offer to a lead (needs Offer model)
 - ⬜ dev-offer-rules — auto-offer guardrails
-- ⬜ dev-automations — proactive Baba re-engagement
+- ⬜ dev-automations — proactive HouseX AI re-engagement
 - ⬜ admin-billing — plans/subscriptions (needs plan + billing)
 - ⬜ admin-bdm — sales pipeline to sign developers
 - ⬜ admin-onboarding — developer/RERA onboarding pipeline
@@ -73,7 +73,7 @@ All four are set in Vercel and confirmed live:
 - ✅ Each developer sees only THEIR leads / properties / visits / bookings
 - ✅ Lead routing — interest in a developer's property routes the lead to them
 - ✅ Developer dashboard + speed-to-lead
-- ✅ Lead detail with **two-way buyer messaging** (replies land in Baba chat)
+- ✅ Lead detail with **two-way buyer messaging** (replies land in HouseX AI chat)
 - ✅ **Rate offers** — send ₹ offer → buyer Accept/Counter/Decline in chat
 - ✅ Add / edit / delete properties
 - ✅ Team members + roles (owner / manager / agent)
@@ -94,9 +94,9 @@ All four are set in Vercel and confirmed live:
 - ⬜ Developer subscription / billing
 
 ## Phase 5 — Growth & smoothness ⬜
-- ⬜ WhatsApp channel (Baba on WhatsApp)
+- ⬜ WhatsApp channel (HouseX AI on WhatsApp)
 - ⬜ Notifications (buyer + developer)
-- ⬜ Proactive Baba (price drop / new match alerts)
+- ⬜ Proactive HouseX AI (price drop / new match alerts)
 - ⬜ Saved homes / compare
 
 ## Phase 6 — Launch ⬜
@@ -108,7 +108,7 @@ All four are set in Vercel and confirmed live:
 ---
 
 ## Right now → path to launch
-**Built & working:** the full loop — Buyer → Baba → property page → book visit → lead →
+**Built & working:** the full loop — Buyer → HouseX AI → property page → book visit → lead →
 developer replies + sends rate offers → buyer accepts/counters/declines.
 
 **Pending for a real pilot launch (in order):**
@@ -119,5 +119,5 @@ developer replies + sends rate offers → buyer accepts/counters/declines.
 5. ⬜ **Point houseX.ai** at the app
 6. ⬜ **Onboard 1–2 pilot developers**
 
-**Later (post-launch):** Razorpay + ₹999 token · real KYC · proactive Baba · compare/shortlist ·
+**Later (post-launch):** Razorpay + ₹999 token · real KYC · proactive HouseX AI · compare/shortlist ·
 admin billing/BDM/onboarding/roles screens · buyer accounts.

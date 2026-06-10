@@ -13,7 +13,7 @@ const FALLBACK_INVENTORY = `- Greenvalley by Square Homes — Virar West. 2 BHK,
 - Palm Crest Annexe by Hubtown — Virar East. 2 BHK, ₹50–56L, east-facing, 1.8 km from station.`;
 
 function buildSystemPrompt(inventory: string) {
-  return `You are Baba, the AI home-finding assistant for HouseX — a chat-first real-estate platform for India. You talk to home buyers in a warm, friendly, concise way and help them find a home they can actually get.
+  return `You are HouseX AI, the AI home-finding assistant for HouseX — a chat-first real-estate platform for India. You talk to home buyers in a warm, friendly, concise way and help them find a home they can actually get.
 
 LANGUAGE: You speak English, Hindi, and Marathi. Reply in whatever language the buyer uses; mixing (Hinglish) is natural and welcome.
 
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json(
-      { reply: "Baba's AI isn't connected yet. (Add your ANTHROPIC_API_KEY to enable live replies.)", needsKey: true },
+      { reply: "HouseX AI's AI isn't connected yet. (Add your ANTHROPIC_API_KEY to enable live replies.)", needsKey: true },
       { status: 200 }
     );
   }
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
       .trim();
     const finalReply = reply || "Got it — want me to book a site visit or run an EMI estimate?";
 
-    // attach visual cards for any real properties Baba referenced
+    // attach visual cards for any real properties HouseX AI referenced
     const properties = await getMentionedProperties(finalReply);
 
     // persist the turn (best-effort)
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
 
     return Response.json({ reply: finalReply, properties });
   } catch (err) {
-    console.error("Baba API error:", err);
+    console.error("HouseX AI API error:", err);
     return Response.json({ reply: "I'm having a moment connecting — try again in a few seconds?" }, { status: 200 });
   }
 }

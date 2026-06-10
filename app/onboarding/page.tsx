@@ -153,7 +153,7 @@ export default function Onboarding() {
                     </span>
                   </span>
                   <div className="font-deva text-[24px] font-bold leading-tight text-hx-red">नमस्ते 🙏</div>
-                  <h2 className="mt-1 text-[28px] font-extrabold tracking-tight">I&apos;m Baba</h2>
+                  <h2 className="mt-1 text-[28px] font-extrabold tracking-tight">I&apos;m HouseX AI</h2>
                   <p className="mt-2 text-[14px] text-hx-slate leading-relaxed max-w-[280px]">
                     Your home-finding assistant. Tell me a few things and I&apos;ll surface homes that actually fit —{" "}
                     <span className="text-hx-ink font-semibold">no endless scrolling.</span>

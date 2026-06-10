@@ -12,7 +12,7 @@ export default function Terms() {
       </section>
       <section>
         <h2>2. For buyers</h2>
-        <p>HouseX is free for buyers. Property information (prices, availability, amenities, possession dates) is provided by developers and may change without notice. Always verify all details — including RERA registration, pricing, and legal documents — directly with the developer before making any payment or commitment. Replies from our AI assistant ("Baba") are for guidance only and can contain mistakes; they are not legal, financial, or investment advice.</p>
+        <p>HouseX is free for buyers. Property information (prices, availability, amenities, possession dates) is provided by developers and may change without notice. Always verify all details — including RERA registration, pricing, and legal documents — directly with the developer before making any payment or commitment. Replies from our AI assistant (&ldquo;HouseX AI&rdquo;) are for guidance only and can contain mistakes; they are not legal, financial, or investment advice.</p>
       </section>
       <section>
         <h2>3. For developers</h2>

@@ -35,7 +35,7 @@ export default function LeadReply({ leadId }: { leadId: string }) {
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
         rows={1}
-        placeholder="Reply to the buyer…  (appears in their Baba chat)"
+        placeholder="Reply to the buyer…  (appears in their HouseX AI chat)"
         className="flex-1 resize-none bg-transparent outline-none text-[14px] leading-relaxed py-1.5 px-2 placeholder:text-hx-muted max-h-[160px]"
       />
       <button

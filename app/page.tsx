@@ -6,17 +6,17 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "HouseX — Stop scrolling listings. Just talk to Baba.",
+  title: "HouseX — Stop scrolling listings. Just talk to HouseX AI.",
   description:
-    "AI-powered home search for India. Tell Baba what you're looking for — by text or voice. RERA-verified homes, no spam calls, no brokers. Free for buyers, forever.",
+    "AI-powered home search for India. Tell HouseX AI what you're looking for — by text or voice. RERA-verified homes, no spam calls, no brokers. Free for buyers, forever.",
 };
 
 const STEPS = [
   {
     icon: MessageCircle,
     step: "STEP 01",
-    title: "Tell Baba what you want",
-    body: "Type or speak. Hindi, Marathi, English — Baba understands. “2BHK under 60L near school” is enough.",
+    title: "Tell HouseX AI what you want",
+    body: "Type or speak. Hindi, Marathi, English — HouseX AI understands. “2BHK under 60L near school” is enough.",
   },
   {
     icon: Rotate3D,
@@ -52,12 +52,12 @@ export default function Landing() {
     <div className="min-h-dvh bg-white text-hx-ink">
       {/* ── nav ── */}
       <nav className="px-5 sm:px-8 py-3.5 border-b border-hx-line/70 flex items-center bg-white sticky top-0 z-20">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="w-8 h-8 rounded-[9px] bg-hx-red inline-flex items-center justify-center shadow-hx-red">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/housex-mark-white.png" alt="HouseX" className="w-[66%] h-[66%] object-contain" />
-          </span>
-          <span className="text-[17px] font-medium tracking-tight">HouseX</span>
+        <Link href="/" className="flex items-end" aria-label="HouseX">
+          <span className="text-[19px] font-extrabold tracking-tight leading-none">HOUSE</span>
+          <svg viewBox="0 0 240 240" className="w-[27px] h-[27px] -ml-[2px] -mb-[5px] text-hx-red" fill="currentColor" aria-hidden>
+            <path d="M64 70 L114 70 L172 206 L122 206 Z" />
+            <path d="M46 206 L116 122 L212 20 L136 132 L92 206 Z" />
+          </svg>
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
           <Link href="/pricing" className="hidden sm:inline-flex h-9 px-3 rounded-lg items-center text-[13px] text-hx-slate hover:bg-hx-bg">For developers</Link>
@@ -74,7 +74,7 @@ export default function Landing() {
         <h1 className="mt-5 text-[36px] sm:text-[44px] font-medium leading-[1.1] tracking-[-1px]">
           Stop scrolling listings.
           <br />
-          <span className="text-hx-red">Just talk to Baba.</span>
+          <span className="text-hx-red">Just talk to HouseX AI.</span>
         </h1>
         <p className="mt-4 text-[16px] text-hx-muted max-w-[520px] mx-auto leading-relaxed">
           Tell HouseX what home you&apos;re looking for — by text or voice. See every detail.
@@ -85,7 +85,7 @@ export default function Landing() {
         <Link href="/chat" className="mt-7 mx-auto max-w-[540px] flex items-center gap-2 bg-white rounded-2xl border border-hx-line p-2 pl-4 shadow-hx hover:border-hx-red/40 transition-colors">
           <span className="flex-1 text-left text-[14px] text-hx-muted truncate">2 BHK in Virar West under ₹60 lakh, near a school…</span>
           <span className="h-10 px-4 rounded-xl bg-hx-red text-white text-[13px] font-medium inline-flex items-center gap-1.5 shadow-hx-red shrink-0">
-            Ask Baba <ArrowRight className="w-4 h-4" />
+            Ask HouseX AI <ArrowRight className="w-4 h-4" />
           </span>
         </Link>
         <p className="mt-3 text-[12px] text-hx-muted">
@@ -156,7 +156,7 @@ export default function Landing() {
           <div className="bg-white rounded-2xl border border-hx-line/70 p-5 shadow-hx">
             <div className="flex items-center gap-2 pb-3 border-b border-hx-line/70">
               <span className="w-7 h-7 rounded-full bg-hx-red inline-flex items-center justify-center"><Sparkles className="w-3.5 h-3.5 text-white" /></span>
-              <span className="text-[12px] font-medium">Baba AI</span>
+              <span className="text-[12px] font-medium">HouseX AI</span>
               <span className="ml-auto text-[11px] text-hx-success">● Online</span>
             </div>
             <div className="mt-4 flex justify-end">
@@ -181,9 +181,9 @@ export default function Landing() {
       {/* ── final CTA ── */}
       <section className="px-6 py-14 text-center bg-hx-ink">
         <h2 className="text-[28px] sm:text-[32px] font-medium text-white tracking-[-0.5px]">Your next home is one conversation away.</h2>
-        <p className="mt-2 text-[14px]" style={{ color: "#94A3B8" }}>Free for buyers. No card. No spam. Just talk to Baba.</p>
+        <p className="mt-2 text-[14px]" style={{ color: "#94A3B8" }}>Free for buyers. No card. No spam. Just talk to HouseX AI.</p>
         <Link href="/chat" className="mt-7 inline-flex items-center gap-2 h-12 px-8 rounded-xl bg-hx-red text-white text-[15px] font-medium shadow-hx-red">
-          Start chatting with Baba <ArrowRight className="w-4 h-4" />
+          Start chatting with HouseX AI <ArrowRight className="w-4 h-4" />
         </Link>
         <p className="mt-4 text-[11px] inline-flex items-center gap-1.5" style={{ color: "#64748B" }}>
           <Smartphone className="w-3.5 h-3.5" /> Works on any phone — add it to your home screen

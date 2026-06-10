@@ -34,7 +34,7 @@ export default async function DeveloperLayout({ children }: { children: React.Re
           <NavLink href="/developer/properties" icon={<Building2 className="w-4 h-4" />}>Properties</NavLink>
           <NavLink href="/developer/team" icon={<Users2 className="w-4 h-4" />}>Team</NavLink>
           <a href="/chat" target="_blank" className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium text-hx-slate hover:bg-hx-bg transition-colors">
-            <MessageSquare className="w-4 h-4" /> Open Baba chat ↗
+            <MessageSquare className="w-4 h-4" /> Open HouseX AI chat ↗
           </a>
         </nav>
         <div className="p-2.5 border-t border-hx-line">

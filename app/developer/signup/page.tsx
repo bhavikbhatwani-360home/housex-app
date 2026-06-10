@@ -41,7 +41,7 @@ export default function DeveloperSignup() {
           </span>
           <div className="text-[16px] font-semibold tracking-tight">Create your developer account</div>
         </div>
-        <p className="text-[13px] text-hx-muted mb-5">List your projects and get qualified buyer leads from Baba.</p>
+        <p className="text-[13px] text-hx-muted mb-5">List your projects and get qualified buyer leads from HouseX AI.</p>
 
         <Field label="Company / builder name" value={f.company} onChange={set("company")} placeholder="Square Homes" autoFocus />
         <Field label="Your name" value={f.name} onChange={set("name")} placeholder="Rohit Patil" />

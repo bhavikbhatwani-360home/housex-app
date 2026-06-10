@@ -6,17 +6,17 @@ export const metadata = { title: "HouseX — Pricing for developers" };
 const TIERS = [
   {
     name: "Starter", price: "₹1L", per: "/quarter", tag: "For first-time projects",
-    features: ["100 qualified leads / quarter", "3 projects", "2 team logins", "Baba AI lead matching", "Site-visit booking", "₹999 token bookings"],
+    features: ["100 qualified leads / quarter", "3 projects", "2 team logins", "HouseX AI lead matching", "Site-visit booking", "₹999 token bookings"],
     cta: "Start free trial", highlight: false,
   },
   {
     name: "Growth", price: "₹3L", per: "/quarter", tag: "Most popular",
-    features: ["300 qualified leads / quarter", "10 projects", "5 team logins", "Priority Baba placement", "AI replies in Hindi/Marathi/English", "Everything in Starter"],
+    features: ["300 qualified leads / quarter", "10 projects", "5 team logins", "Priority AI placement", "AI replies in Hindi/Marathi/English", "Everything in Starter"],
     cta: "Choose Growth", highlight: true,
   },
   {
     name: "Scale", price: "₹5L", per: "/quarter", tag: "For large builders",
-    features: ["Unlimited leads", "Unlimited projects", "Unlimited logins", "Dedicated account manager", "Pinned Baba in your cities", "Everything in Growth"],
+    features: ["Unlimited leads", "Unlimited projects", "Unlimited logins", "Dedicated account manager", "Pinned placement in your cities", "Everything in Growth"],
     cta: "Talk to sales", highlight: false,
   },
 ];
@@ -46,7 +46,7 @@ export default function Pricing() {
           Pay only for the leads <span className="text-hx-red">you can close.</span>
         </h1>
         <p className="mt-3 text-[15px] text-hx-slate leading-relaxed">
-          No per-listing fees. No broker commission. Just qualified, RERA-aware buyers from Baba — billed quarterly.
+          No per-listing fees. No broker commission. Just qualified, RERA-aware buyers from HouseX AI — billed quarterly.
         </p>
       </div>
 

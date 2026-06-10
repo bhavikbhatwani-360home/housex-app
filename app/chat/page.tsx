@@ -341,11 +341,8 @@ export default function Chat() {
             <img src="/assets/housex-mark-white.png" alt="HouseX" className="w-[68%] h-[68%] object-contain" />
           </span>
           <div className="leading-tight">
-            <div className="text-[14px] font-semibold tracking-tight flex items-center gap-1.5">
-              Baba
-              <span className="text-[9px] font-bold uppercase tracking-wider text-hx-red bg-hx-red/10 rounded px-1.5 py-[1px]">AI</span>
-            </div>
-            <div className="text-[11px] text-hx-muted -mt-0.5">HouseX · home assistant</div>
+            <div className="text-[14px] font-semibold tracking-tight">HouseX AI</div>
+            <div className="text-[11px] text-hx-muted -mt-0.5">Your home assistant</div>
           </div>
         </div>
         <button onClick={newChat} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-hx-line text-[13px] font-medium text-hx-slate hover:bg-hx-bg transition-colors">
@@ -422,7 +419,7 @@ export default function Chat() {
                     <Sparkles className="w-3.5 h-3.5 text-white" />
                   </span>
                   <div className="flex-1 min-w-0 pt-0.5">
-                    <div className="text-[12px] font-semibold text-hx-muted mb-1">Baba</div>
+                    <div className="text-[12px] font-semibold text-hx-muted mb-1">HouseX AI</div>
                     <div className="text-[15px] leading-relaxed text-hx-ink" dangerouslySetInnerHTML={{ __html: m.html }} />
                     {m.properties && m.properties.length > 0 && (
                       <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
@@ -466,7 +463,7 @@ export default function Chat() {
                 }
               }}
               rows={1}
-              placeholder="Message Baba…"
+              placeholder="Message HouseX AI…"
               className="flex-1 resize-none bg-transparent outline-none text-[15px] leading-relaxed py-1.5 px-1.5 placeholder:text-hx-muted max-h-[200px]"
             />
             <button
@@ -479,7 +476,7 @@ export default function Chat() {
             </button>
           </div>
           <p className="text-center text-[11px] text-hx-muted mt-2">
-            Baba helps you find RERA-verified homes · Hindi · Marathi · English · Replies can have mistakes — verify key details.
+            HouseX AI helps you find RERA-verified homes · Hindi · Marathi · English · Replies can have mistakes — verify key details.
           </p>
         </div>
       </div>

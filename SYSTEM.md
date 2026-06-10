@@ -6,13 +6,13 @@ How the whole product connects, end to end. Read this to understand what's built
 
 ## 1. THE FUNNEL — start to end
 
-Three actors. Follow the money: **Buyer → Baba → Developer → ₹.**
+Three actors. Follow the money: **Buyer → HouseX AI → Developer → ₹.**
 
 ### 🟦 Buyer funnel (the demand side)
 ```
 1. Land            /            → redirects to /chat
 2. (Intent)        /onboarding  → quick taps capture what they want      [⚠️ not saved as lead yet]
-3. Chat with Baba  /chat        → real AI (Claude) answers from live DB  [✅]
+3. Chat with HouseX AI  /chat        → real AI (Claude) answers from live DB  [✅]
 4. See matches     in chat      → property cards from the database       [✅]
 5. Open a home     /property/id → photos, video tour, floor×view price,
                                    units, nearby, EMI, brochure, share   [✅]
@@ -27,7 +27,7 @@ Three actors. Follow the money: **Buyer → Baba → Developer → ₹.**
 2. Sign up         /developer/signup   → creates Company + Owner login   [✅]
 3. Log in          /developer/login                                     [✅]
 4. Add inventory   /developer/properties/new → Property + floor units    [✅]
-   └─ the moment it's published, Baba recommends it to matching buyers
+   └─ the moment it's published, HouseX AI recommends it to matching buyers
 5. Buyers engage   → leads / visits / tokens land in THEIR CRM           [✅]
 6. Work the leads  /developer/leads, /visits, /bookings, /speed-to-lead  [✅ view]
    └─ reply to the buyer / send a price offer                           [❌ NOT built]
@@ -50,7 +50,7 @@ missing: billing/subscriptions, onboarding pipeline, RBAC console         [❌]
         ▼
    NEXT.JS API ROUTES  (the backend)
         │
-        ├──────────────► CLAUDE API (Anthropic)   = Baba's brain      /api/baba
+        ├──────────────► CLAUDE API (Anthropic)   = HouseX AI's brain      /api/baba
         ├──────────────► PRISMA ──► POSTGRES (Railway) = all the data
         └──(later)──────► Razorpay · WhatsApp · KYC · Maps
 
@@ -65,7 +65,7 @@ missing: billing/subscriptions, onboarding pipeline, RBAC console         [❌]
 
 | User action | Page | API route | DB tables | External tool |
 |---|---|---|---|---|
-| Chat with Baba | `/chat` | `/api/baba` | Property, Unit, Conversation, Message, Lead | **Claude API** |
+| Chat with HouseX AI | `/chat` | `/api/baba` | Property, Unit, Conversation, Message, Lead | **Claude API** |
 | Open a home | `/property/[id]` | — | Property, Unit | YouTube embed |
 | Book visit | `/chat` sheet | `/api/visits` | Visit, Lead | (later: WhatsApp/SMS) |
 | Pay ₹999 | `/chat` sheet | `/api/token` | Booking, Lead | (later: **Razorpay**) |
@@ -84,7 +84,7 @@ missing: billing/subscriptions, onboarding pipeline, RBAC console         [❌]
 | Hosting / deploy | Vercel | ✅ |
 | Database | PostgreSQL on Railway | ✅ |
 | ORM (DB access) | Prisma | ✅ |
-| AI (Baba) | Claude API (Anthropic) | ✅ |
+| AI (HouseX AI) | Claude API (Anthropic) | ✅ |
 | Tours | YouTube embed | ✅ |
 | Payments | Razorpay | ❌ to add |
 | Messaging | WhatsApp (Gupshup/Meta) | ❌ to add |

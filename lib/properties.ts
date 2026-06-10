@@ -1,7 +1,7 @@
 import { prisma } from "./db";
 
 /**
- * Build a compact, real inventory summary for Baba's context.
+ * Build a compact, real inventory summary for HouseX AI's context.
  * Returns null if the DB is unavailable or empty (caller falls back to static).
  */
 export async function getInventoryContext(): Promise<string | null> {
@@ -43,7 +43,7 @@ export type PropertyCard = {
 };
 
 /**
- * Find which real properties Baba referenced in its reply, so the UI can render
+ * Find which real properties HouseX AI referenced in its reply, so the UI can render
  * visual cards. Matches by property name appearing in the text.
  */
 export async function getMentionedProperties(text: string): Promise<PropertyCard[]> {
@@ -71,7 +71,7 @@ export async function getMentionedProperties(text: string): Promise<PropertyCard
 
 /**
  * Persist a chat turn: ensure a conversation (and its lead) exist, then append
- * the user + Baba messages. Best-effort — never throws into the request path.
+ * the user + HouseX AI messages. Best-effort — never throws into the request path.
  */
 export async function persistTurn(
   conversationId: string | undefined,
