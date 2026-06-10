@@ -195,10 +195,31 @@ export default function NewPropertyForm({
     ? developers.find((d) => d.id === developerId)?.company || ""
     : f.developer || "Developer";
 
+  // Upload brochure photos to blob storage (if configured) and get back URLs;
+  // falls back to the data URLs unchanged if storage isn't set up.
+  const hostPhotos = async (urls: string[]): Promise<string[]> => {
+    if (!urls.some((u) => u.startsWith("data:"))) return urls;
+    try {
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ images: urls }),
+      });
+      if (res.ok) return (await res.json()).urls as string[];
+    } catch {}
+    return urls;
+  };
+
   const save = async (goNext: boolean) => {
     setError("");
     setBusy(true);
     try {
+      const manualImgs = f.images.split("\n").map((x) => x.trim()).filter(Boolean);
+      const manualPlans = f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean);
+      const [images, floorPlans] = await Promise.all([
+        hostPhotos([...photos, ...manualImgs]),
+        hostPhotos([...plans, ...manualPlans]),
+      ]);
       const res = await fetch(isEdit ? `/api/admin/properties/${propertyId}` : "/api/admin/properties", {
         method: isEdit ? "PUT" : "POST",
         headers: { "content-type": "application/json" },
@@ -208,9 +229,8 @@ export default function NewPropertyForm({
           carpetSqft: Number(f.carpetSqft),
           distanceToStationM: Number(f.distanceToStationM),
           amenities: f.amenities.split(",").map((a) => a.trim()).filter(Boolean),
-          // brochure photos (data URLs) first, then any manually-pasted URLs
-          images: [...photos, ...f.images.split("\n").map((x) => x.trim()).filter(Boolean)],
-          floorPlans: [...plans, ...f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean)],
+          images,
+          floorPlans,
           nearby: f.nearby.split("\n").map((x) => x.trim()).filter(Boolean),
           units: units.map((u) => ({
             floor: Number(u.floor), priceLakh: Number(u.priceLakh),
