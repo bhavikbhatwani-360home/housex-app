@@ -10,6 +10,7 @@ export type PropertyInitial = {
   id: string; name: string; city: string; locality: string; bhk: string; facing: string;
   carpetSqft: number; distanceToStationM: number; reraId: string; status: string;
   amenities: string[]; brochureUrl: string | null;
+  description: string | null; possession: string | null; videoUrl: string | null; images: string[];
   units: { floor: number; priceLakh: number; facing: string; carpetSqft: number }[];
 };
 
@@ -23,6 +24,7 @@ export default function EditForm({ initial }: { initial: PropertyInitial }) {
     name: initial.name, city: initial.city, locality: initial.locality, bhk: initial.bhk,
     facing: initial.facing, carpetSqft: String(initial.carpetSqft || ""), distanceToStationM: String(initial.distanceToStationM || ""),
     reraId: initial.reraId, status: initial.status, amenities: initial.amenities.join(", "), brochureUrl: initial.brochureUrl || "",
+    videoUrl: initial.videoUrl || "", possession: initial.possession || "", description: initial.description || "", images: initial.images.join("\n"),
   });
   const [units, setUnits] = useState<UnitRow[]>(
     initial.units.length
@@ -58,6 +60,7 @@ export default function EditForm({ initial }: { initial: PropertyInitial }) {
           carpetSqft: Number(f.carpetSqft),
           distanceToStationM: Number(f.distanceToStationM),
           amenities: f.amenities.split(",").map((a) => a.trim()).filter(Boolean),
+          images: f.images.split("\n").map((x) => x.trim()).filter(Boolean),
           units: units.map((u) => ({ floor: Number(u.floor), priceLakh: Number(u.priceLakh), facing: u.facing, carpetSqft: Number(u.carpetSqft) })),
         }),
       });
@@ -123,6 +126,21 @@ export default function EditForm({ initial }: { initial: PropertyInitial }) {
               ))}
               <button type="button" onClick={addUnit} className="mt-1 inline-flex items-center gap-1.5 text-[13px] font-medium text-hx-red hover:underline"><Plus className="w-4 h-4" /> Add unit</button>
             </div>
+          </Card>
+
+          <Card title="Media & overview">
+            <Grid>
+              <Input label="Video tour — YouTube link" value={f.videoUrl} onChange={set("videoUrl")} full />
+              <Input label="Possession" value={f.possession} onChange={set("possession")} />
+            </Grid>
+            <label className="block mt-3.5">
+              <span className="text-[12px] font-medium text-hx-slate mb-1 block">Description</span>
+              <textarea value={f.description} onChange={(e) => setF((p) => ({ ...p, description: e.target.value }))} rows={3} className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
+            </label>
+            <label className="block mt-3.5">
+              <span className="text-[12px] font-medium text-hx-slate mb-1 block">Photo URLs — one per line</span>
+              <textarea value={f.images} onChange={(e) => setF((p) => ({ ...p, images: e.target.value }))} rows={3} className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
+            </label>
           </Card>
 
           <Card title="Legal & details">

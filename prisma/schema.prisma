@@ -70,6 +70,10 @@ model Property {
   status             String     @default("Live")
   amenities          String[]   @default([])
   brochureUrl        String?
+  description        String?
+  possession         String?
+  videoUrl           String?
+  images             String[]   @default([])
   units              Unit[]
   visits             Visit[]
   bookings           Booking[]

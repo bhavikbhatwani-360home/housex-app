@@ -41,6 +41,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const status = s(body.status, "Live");
   const brochureUrl = body.brochureUrl ? s(body.brochureUrl) : null;
   const amenities = Array.isArray(body.amenities) ? body.amenities.map((a) => String(a)).filter(Boolean) : [];
+  const description = s(body.description) || null;
+  const possession = s(body.possession) || null;
+  const videoUrl = s(body.videoUrl) || null;
+  const images = Array.isArray(body.images) ? body.images.map((x) => String(x).trim()).filter(Boolean) : [];
 
   const units = (Array.isArray(body.units) ? (body.units as UnitIn[]) : [])
     .map((u) => ({ floor: n(u.floor), priceLakh: n(u.priceLakh), facing: s(u.facing, facing) || facing, carpetSqft: n(u.carpetSqft, carpetSqft) || carpetSqft, available: true }))
@@ -57,7 +61,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       prisma.unit.deleteMany({ where: { propertyId: id } }),
       prisma.property.update({
         where: { id },
-        data: { name, city, locality, bhk, facing, carpetSqft, distanceToStationM, reraId, status, brochureUrl, amenities, priceMin, priceMax, units: { create: units } },
+        data: { name, city, locality, bhk, facing, carpetSqft, distanceToStationM, reraId, status, brochureUrl, amenities, priceMin, priceMax, description, possession, videoUrl, images, units: { create: units } },
       }),
     ]);
     return Response.json({ ok: true });

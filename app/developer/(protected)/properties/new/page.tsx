@@ -15,6 +15,7 @@ export default function DevNewProperty() {
   const [f, setF] = useState({
     name: "", city: "Mumbai (MMR)", locality: "", bhk: "2 BHK", facing: "East",
     carpetSqft: "", distanceToStationM: "", reraId: "", status: "Live", amenities: "", brochureUrl: "",
+    videoUrl: "", possession: "", description: "", images: "",
   });
   const [units, setUnits] = useState<UnitRow[]>([{ floor: "", priceLakh: "", facing: "East", carpetSqft: "" }]);
   const [error, setError] = useState("");
@@ -45,6 +46,7 @@ export default function DevNewProperty() {
           carpetSqft: Number(f.carpetSqft),
           distanceToStationM: Number(f.distanceToStationM),
           amenities: f.amenities.split(",").map((a) => a.trim()).filter(Boolean),
+          images: f.images.split("\n").map((x) => x.trim()).filter(Boolean),
           units: units.map((u) => ({ floor: Number(u.floor), priceLakh: Number(u.priceLakh), facing: u.facing, carpetSqft: Number(u.carpetSqft) })),
         }),
       });
@@ -98,6 +100,21 @@ export default function DevNewProperty() {
               ))}
               <button type="button" onClick={addUnit} className="mt-1 inline-flex items-center gap-1.5 text-[13px] font-medium text-hx-red hover:underline"><Plus className="w-4 h-4" /> Add unit</button>
             </div>
+          </Card>
+
+          <Card title="Media & overview">
+            <Grid>
+              <Input label="Video tour — YouTube link" value={f.videoUrl} onChange={set("videoUrl")} placeholder="https://youtube.com/watch?v=…" full />
+              <Input label="Possession" value={f.possession} onChange={set("possession")} placeholder="Ready to move / Dec 2026" />
+            </Grid>
+            <label className="block mt-3.5">
+              <span className="text-[12px] font-medium text-hx-slate mb-1 block">Description</span>
+              <textarea value={f.description} onChange={(e) => setF((p) => ({ ...p, description: e.target.value }))} rows={3} placeholder="A short overview buyers will read…" className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
+            </label>
+            <label className="block mt-3.5">
+              <span className="text-[12px] font-medium text-hx-slate mb-1 block">Photo URLs — one per line</span>
+              <textarea value={f.images} onChange={(e) => setF((p) => ({ ...p, images: e.target.value }))} rows={3} placeholder="https://…/photo1.jpg" className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
+            </label>
           </Card>
 
           <Card title="Legal & details">
