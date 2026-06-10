@@ -8,6 +8,8 @@ type PropSeed = {
   priceMin: number; priceMax: number; carpetSqft: number; facing: string;
   distanceToStationM: number; reraId: string; status?: string;
   amenities: string[]; brochureUrl?: string; units: UnitSeed[];
+  description?: string; possession?: string; nearby?: string[];
+  totalTowers?: number; totalUnits?: number; projectArea?: string; totalFloors?: string;
 };
 
 // Realistic MMR (Mumbai metropolitan region) inventory for the pilot.
@@ -16,8 +18,10 @@ const PROPERTIES: PropSeed[] = [
   {
     name: "Greenvalley", developer: "Square Homes", city: "Mumbai (MMR)", locality: "Virar West",
     bhk: "2 BHK", priceMin: 52, priceMax: 58, carpetSqft: 720, facing: "East",
-    distanceToStationM: 800, reraId: "P51700012345", amenities: ["Covered parking", "Modular kitchen", "Kids' play area", "Gym", "Gated society"],
-    brochureUrl: "/assets/brochures/greenvalley.pdf",
+    distanceToStationM: 800, reraId: "P51700012345", amenities: ["Covered parking", "Modular kitchen", "Kids' play area", "Gym", "Gated society", "Clubhouse"],
+    description: "A premium RERA-verified 2 BHK community in the heart of Virar West — just 800 m from the station, with east-facing homes, a clubhouse, and kid-friendly green spaces. Ready to move in.",
+    possession: "Ready to move", totalTowers: 4, totalUnits: 320, projectArea: "3.2 acres", totalFloors: "G+11",
+    nearby: ["School, DAV Public School, 600 m", "Hospital, Apex Multispeciality, 1.2 km", "Market, D-Mart, 800 m", "Station, Virar Station, 800 m", "Park, Central Garden, 300 m", "Mall, Maxus Mall, 2.5 km"],
     units: [
       { floor: 1, priceLakh: 54, facing: "East", carpetSqft: 720 },
       { floor: 3, priceLakh: 55, facing: "East", carpetSqft: 720 },
@@ -39,7 +43,10 @@ const PROPERTIES: PropSeed[] = [
   {
     name: "Sunrise Heights", developer: "Patel Realty", city: "Mumbai (MMR)", locality: "Virar West",
     bhk: "2 BHK", priceMin: 56, priceMax: 62, carpetSqft: 690, facing: "North",
-    distanceToStationM: 1200, reraId: "P51700013111", amenities: ["Parking", "Gym", "Rainwater harvesting"],
+    distanceToStationM: 1200, reraId: "P51700013111", amenities: ["Parking", "Gym", "Rainwater harvesting", "Clubhouse"],
+    description: "Modern 2 BHK towers in Virar West with a rooftop clubhouse and landscaped gardens. Possession by end of 2026.",
+    possession: "Dec 2026", totalTowers: 2, totalUnits: 180, projectArea: "1.8 acres", totalFloors: "G+7",
+    nearby: ["School, Podar International, 900 m", "Hospital, Sanjeevani Hospital, 1.5 km", "Market, Reliance Fresh, 600 m", "Station, Virar Station, 1.2 km"],
     units: [
       { floor: 2, priceLakh: 56, facing: "North", carpetSqft: 690 },
       { floor: 4, priceLakh: 58, facing: "East", carpetSqft: 700 },

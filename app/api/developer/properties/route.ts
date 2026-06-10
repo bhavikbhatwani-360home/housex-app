@@ -39,6 +39,12 @@ export async function POST(req: Request) {
   const possession = s(body.possession) || null;
   const videoUrl = s(body.videoUrl) || null;
   const images = Array.isArray(body.images) ? body.images.map((x) => String(x).trim()).filter(Boolean) : [];
+  const floorPlans = Array.isArray(body.floorPlans) ? body.floorPlans.map((x) => String(x).trim()).filter(Boolean) : [];
+  const nearby = Array.isArray(body.nearby) ? body.nearby.map((x) => String(x).trim()).filter(Boolean) : [];
+  const totalTowers = n(body.totalTowers) > 0 ? Math.trunc(n(body.totalTowers)) : null;
+  const totalUnits = n(body.totalUnits) > 0 ? Math.trunc(n(body.totalUnits)) : null;
+  const projectArea = s(body.projectArea) || null;
+  const totalFloors = s(body.totalFloors) || null;
 
   const units = (Array.isArray(body.units) ? (body.units as UnitIn[]) : [])
     .map((u) => ({
@@ -61,7 +67,7 @@ export async function POST(req: Request) {
       data: {
         name, developer: dev.company, developerId: dev.id, city, locality, bhk, facing,
         carpetSqft, distanceToStationM, reraId, status, brochureUrl, amenities, priceMin, priceMax,
-        description, possession, videoUrl, images,
+        description, possession, videoUrl, images, floorPlans, nearby, totalTowers, totalUnits, projectArea, totalFloors,
         units: { create: units },
       },
     });

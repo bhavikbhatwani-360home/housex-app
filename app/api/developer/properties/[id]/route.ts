@@ -45,6 +45,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const possession = s(body.possession) || null;
   const videoUrl = s(body.videoUrl) || null;
   const images = Array.isArray(body.images) ? body.images.map((x) => String(x).trim()).filter(Boolean) : [];
+  const floorPlans = Array.isArray(body.floorPlans) ? body.floorPlans.map((x) => String(x).trim()).filter(Boolean) : [];
+  const nearby = Array.isArray(body.nearby) ? body.nearby.map((x) => String(x).trim()).filter(Boolean) : [];
+  const totalTowers = n(body.totalTowers) > 0 ? Math.trunc(n(body.totalTowers)) : null;
+  const totalUnits = n(body.totalUnits) > 0 ? Math.trunc(n(body.totalUnits)) : null;
+  const projectArea = s(body.projectArea) || null;
+  const totalFloors = s(body.totalFloors) || null;
 
   const units = (Array.isArray(body.units) ? (body.units as UnitIn[]) : [])
     .map((u) => ({ floor: n(u.floor), priceLakh: n(u.priceLakh), facing: s(u.facing, facing) || facing, carpetSqft: n(u.carpetSqft, carpetSqft) || carpetSqft, available: true }))
@@ -61,7 +67,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       prisma.unit.deleteMany({ where: { propertyId: id } }),
       prisma.property.update({
         where: { id },
-        data: { name, city, locality, bhk, facing, carpetSqft, distanceToStationM, reraId, status, brochureUrl, amenities, priceMin, priceMax, description, possession, videoUrl, images, units: { create: units } },
+        data: { name, city, locality, bhk, facing, carpetSqft, distanceToStationM, reraId, status, brochureUrl, amenities, priceMin, priceMax, description, possession, videoUrl, images, floorPlans, nearby, totalTowers, totalUnits, projectArea, totalFloors, units: { create: units } },
       }),
     ]);
     return Response.json({ ok: true });

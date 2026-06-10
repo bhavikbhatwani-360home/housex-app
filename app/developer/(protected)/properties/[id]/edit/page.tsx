@@ -40,6 +40,12 @@ export default async function EditProperty({ params }: { params: Promise<{ id: s
         possession: property.possession,
         videoUrl: property.videoUrl,
         images: property.images,
+        floorPlans: property.floorPlans,
+        nearby: property.nearby,
+        totalTowers: property.totalTowers,
+        totalUnits: property.totalUnits,
+        projectArea: property.projectArea,
+        totalFloors: property.totalFloors,
         units: property.units.map((u) => ({ floor: u.floor, priceLakh: u.priceLakh, facing: u.facing, carpetSqft: u.carpetSqft })),
       }}
     />

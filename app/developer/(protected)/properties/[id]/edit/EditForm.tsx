@@ -11,6 +11,8 @@ export type PropertyInitial = {
   carpetSqft: number; distanceToStationM: number; reraId: string; status: string;
   amenities: string[]; brochureUrl: string | null;
   description: string | null; possession: string | null; videoUrl: string | null; images: string[];
+  floorPlans: string[]; nearby: string[]; totalTowers: number | null; totalUnits: number | null;
+  projectArea: string | null; totalFloors: string | null;
   units: { floor: number; priceLakh: number; facing: string; carpetSqft: number }[];
 };
 
@@ -25,6 +27,8 @@ export default function EditForm({ initial }: { initial: PropertyInitial }) {
     facing: initial.facing, carpetSqft: String(initial.carpetSqft || ""), distanceToStationM: String(initial.distanceToStationM || ""),
     reraId: initial.reraId, status: initial.status, amenities: initial.amenities.join(", "), brochureUrl: initial.brochureUrl || "",
     videoUrl: initial.videoUrl || "", possession: initial.possession || "", description: initial.description || "", images: initial.images.join("\n"),
+    totalTowers: initial.totalTowers ? String(initial.totalTowers) : "", totalUnits: initial.totalUnits ? String(initial.totalUnits) : "",
+    projectArea: initial.projectArea || "", totalFloors: initial.totalFloors || "", floorPlans: initial.floorPlans.join("\n"), nearby: initial.nearby.join("\n"),
   });
   const [units, setUnits] = useState<UnitRow[]>(
     initial.units.length
@@ -61,6 +65,8 @@ export default function EditForm({ initial }: { initial: PropertyInitial }) {
           distanceToStationM: Number(f.distanceToStationM),
           amenities: f.amenities.split(",").map((a) => a.trim()).filter(Boolean),
           images: f.images.split("\n").map((x) => x.trim()).filter(Boolean),
+          floorPlans: f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean),
+          nearby: f.nearby.split("\n").map((x) => x.trim()).filter(Boolean),
           units: units.map((u) => ({ floor: Number(u.floor), priceLakh: Number(u.priceLakh), facing: u.facing, carpetSqft: Number(u.carpetSqft) })),
         }),
       });
@@ -140,6 +146,23 @@ export default function EditForm({ initial }: { initial: PropertyInitial }) {
             <label className="block mt-3.5">
               <span className="text-[12px] font-medium text-hx-slate mb-1 block">Photo URLs — one per line</span>
               <textarea value={f.images} onChange={(e) => setF((p) => ({ ...p, images: e.target.value }))} rows={3} className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
+            </label>
+            <label className="block mt-3.5">
+              <span className="text-[12px] font-medium text-hx-slate mb-1 block">Floor plan image URLs — one per line</span>
+              <textarea value={f.floorPlans} onChange={(e) => setF((p) => ({ ...p, floorPlans: e.target.value }))} rows={2} className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
+            </label>
+          </Card>
+
+          <Card title="Project details & location">
+            <Grid>
+              <Input label="Total towers" value={f.totalTowers} onChange={set("totalTowers")} type="number" />
+              <Input label="Total units" value={f.totalUnits} onChange={set("totalUnits")} type="number" />
+              <Input label="Project area" value={f.projectArea} onChange={set("projectArea")} placeholder="3.5 acres" />
+              <Input label="Floors" value={f.totalFloors} onChange={set("totalFloors")} placeholder="G+14" />
+            </Grid>
+            <label className="block mt-3.5">
+              <span className="text-[12px] font-medium text-hx-slate mb-1 block">What&apos;s nearby — one per line: Category, Name, Distance</span>
+              <textarea value={f.nearby} onChange={(e) => setF((p) => ({ ...p, nearby: e.target.value }))} rows={4} placeholder={"School, DAV Public School, 600 m"} className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
             </label>
           </Card>
 

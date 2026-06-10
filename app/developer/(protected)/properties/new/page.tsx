@@ -16,6 +16,7 @@ export default function DevNewProperty() {
     name: "", city: "Mumbai (MMR)", locality: "", bhk: "2 BHK", facing: "East",
     carpetSqft: "", distanceToStationM: "", reraId: "", status: "Live", amenities: "", brochureUrl: "",
     videoUrl: "", possession: "", description: "", images: "",
+    totalTowers: "", totalUnits: "", projectArea: "", totalFloors: "", floorPlans: "", nearby: "",
   });
   const [units, setUnits] = useState<UnitRow[]>([{ floor: "", priceLakh: "", facing: "East", carpetSqft: "" }]);
   const [error, setError] = useState("");
@@ -47,6 +48,8 @@ export default function DevNewProperty() {
           distanceToStationM: Number(f.distanceToStationM),
           amenities: f.amenities.split(",").map((a) => a.trim()).filter(Boolean),
           images: f.images.split("\n").map((x) => x.trim()).filter(Boolean),
+          floorPlans: f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean),
+          nearby: f.nearby.split("\n").map((x) => x.trim()).filter(Boolean),
           units: units.map((u) => ({ floor: Number(u.floor), priceLakh: Number(u.priceLakh), facing: u.facing, carpetSqft: Number(u.carpetSqft) })),
         }),
       });
@@ -114,6 +117,23 @@ export default function DevNewProperty() {
             <label className="block mt-3.5">
               <span className="text-[12px] font-medium text-hx-slate mb-1 block">Photo URLs — one per line</span>
               <textarea value={f.images} onChange={(e) => setF((p) => ({ ...p, images: e.target.value }))} rows={3} placeholder="https://…/photo1.jpg" className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
+            </label>
+            <label className="block mt-3.5">
+              <span className="text-[12px] font-medium text-hx-slate mb-1 block">Floor plan image URLs — one per line</span>
+              <textarea value={f.floorPlans} onChange={(e) => setF((p) => ({ ...p, floorPlans: e.target.value }))} rows={2} placeholder="https://…/2bhk-floorplan.jpg" className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
+            </label>
+          </Card>
+
+          <Card title="Project details & location">
+            <Grid>
+              <Input label="Total towers" value={f.totalTowers} onChange={set("totalTowers")} type="number" placeholder="4" />
+              <Input label="Total units" value={f.totalUnits} onChange={set("totalUnits")} type="number" placeholder="320" />
+              <Input label="Project area" value={f.projectArea} onChange={set("projectArea")} placeholder="3.5 acres" />
+              <Input label="Floors" value={f.totalFloors} onChange={set("totalFloors")} placeholder="G+14" />
+            </Grid>
+            <label className="block mt-3.5">
+              <span className="text-[12px] font-medium text-hx-slate mb-1 block">What&apos;s nearby — one per line: Category, Name, Distance</span>
+              <textarea value={f.nearby} onChange={(e) => setF((p) => ({ ...p, nearby: e.target.value }))} rows={4} placeholder={"School, DAV Public School, 600 m\nHospital, Apex Hospital, 1.2 km\nMarket, D-Mart, 800 m\nMetro, Virar Metro, 1 km"} className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
             </label>
           </Card>
 

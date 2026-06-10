@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft, BadgeCheck, MapPin, Sparkles, Check, Building2, Compass,
-  Train, IndianRupee, Layers, CalendarPlus, Lock, MessageSquare, Play, KeyRound,
+  ArrowLeft, BadgeCheck, MapPin, Sparkles, Check, Building2, Compass, Train,
+  IndianRupee, Layers, CalendarPlus, Lock, MessageSquare, Play, KeyRound,
+  FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
 
@@ -20,6 +21,26 @@ function youtubeId(url: string | null): string | null {
   if (!url) return null;
   const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
   return m ? m[1] : null;
+}
+
+const BANDS = [
+  { label: "1–4", lo: 1, hi: 4 },
+  { label: "5–11", lo: 5, hi: 11 },
+  { label: "12–15", lo: 12, hi: 15 },
+  { label: "15+", lo: 16, hi: 9999 },
+];
+
+function nearbyIcon(cat: string) {
+  const c = cat.toLowerCase();
+  if (c.includes("school") || c.includes("college")) return GraduationCap;
+  if (c.includes("hospital") || c.includes("clinic")) return Stethoscope;
+  if (c.includes("market") || c.includes("mall") || c.includes("shop")) return ShoppingBag;
+  if (c.includes("metro") || c.includes("station") || c.includes("train") || c.includes("railway")) return TrainFront;
+  if (c.includes("airport")) return Plane;
+  if (c.includes("restaurant") || c.includes("food") || c.includes("cafe")) return Utensils;
+  if (c.includes("bank") || c.includes("atm")) return Landmark;
+  if (c.includes("park") || c.includes("garden")) return Trees;
+  return MapPin;
 }
 
 export default async function PropertyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -41,6 +62,29 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   const vid = youtubeId(p.videoUrl);
   const hero = p.images[0] || null;
 
+  const basics = [
+    p.totalTowers ? `${p.totalTowers} towers` : null,
+    p.totalUnits ? `${p.totalUnits} units` : null,
+    p.projectArea || null,
+    p.totalFloors || null,
+  ].filter(Boolean) as string[];
+
+  // floor × view price matrix
+  const usedBands = BANDS.filter((b) => p.units.some((u) => u.floor >= b.lo && u.floor <= b.hi));
+  const facings = Array.from(new Set(p.units.map((u) => u.facing)));
+  const cell = (facing: string, b: (typeof BANDS)[number]) => {
+    const us = p.units.filter((u) => u.facing === facing && u.floor >= b.lo && u.floor <= b.hi).map((u) => u.priceLakh);
+    if (us.length === 0) return null;
+    const lo = Math.min(...us), hi = Math.max(...us);
+    return lo === hi ? `₹${lo}L` : `₹${lo}–${hi}L`;
+  };
+  const showMatrix = usedBands.length > 0 && facings.length > 0;
+
+  const nearby = p.nearby.map((line) => {
+    const parts = line.split(",").map((s) => s.trim());
+    return { category: parts[0] || "", name: parts[1] || parts[0] || "", distance: parts[2] || "" };
+  });
+
   const facts = [
     { icon: Building2, label: "Configuration", value: p.bhk },
     { icon: Compass, label: "Facing", value: p.facing },
@@ -61,7 +105,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
       </header>
 
       <div className="max-w-2xl mx-auto">
-        {/* hero image / gallery */}
+        {/* hero */}
         <div className="relative h-[210px] sm:h-[260px]" style={hero ? undefined : { backgroundImage: "repeating-linear-gradient(135deg,#F1E2D8 0 16px,#FAEFE7 16px 32px)" }}>
           {hero ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -74,7 +118,6 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 text-hx-ink text-[11px] font-semibold">{p.status}</span>
           </div>
         </div>
-        {/* thumbnails */}
         {p.images.length > 1 && (
           <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 pt-3">
             {p.images.slice(0, 8).map((src, i) => (
@@ -90,6 +133,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             <div className="min-w-0">
               <h1 className="text-[22px] font-bold tracking-tight">{p.name}</h1>
               <div className="mt-1 flex items-center gap-1.5 text-[13px] text-hx-slate"><MapPin className="w-3.5 h-3.5" /> {p.locality}, {p.city}</div>
+              {basics.length > 0 && <div className="mt-1.5 text-[12px] text-hx-muted">{basics.join(" · ")}</div>}
             </div>
             <div className="text-right shrink-0">
               <div className="num text-[22px] font-extrabold tracking-tight">{range}</div>
@@ -97,18 +141,19 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
+          {/* brochure */}
+          {p.brochureUrl && (
+            <a href={p.brochureUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white border border-hx-line text-[13px] font-semibold text-hx-ink hover:bg-hx-bg">
+              <FileText className="w-4 h-4 text-hx-red" /> Download brochure
+            </a>
+          )}
+
           {/* VIDEO TOUR */}
           {vid && (
             <div className="mt-5">
               <div className="flex items-center gap-1.5 text-[12px] font-semibold text-hx-red mb-2"><Play className="w-3.5 h-3.5" /> Video tour</div>
               <div className="relative w-full rounded-2xl overflow-hidden border border-hx-line" style={{ aspectRatio: "16 / 9" }}>
-                <iframe
-                  src={`https://www.youtube.com/embed/${vid}`}
-                  title={`${p.name} tour`}
-                  className="absolute inset-0 w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+                <iframe src={`https://www.youtube.com/embed/${vid}`} title={`${p.name} tour`} className="absolute inset-0 w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
               </div>
             </div>
           )}
@@ -155,6 +200,34 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             })}
           </div>
 
+          {/* PRICE BY FLOOR & VIEW */}
+          {showMatrix && (
+            <>
+              <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Price by floor &amp; view</div>
+              <div className="rounded-xl border border-hx-line overflow-x-auto no-scrollbar">
+                <table className="w-full text-left min-w-[360px]">
+                  <thead>
+                    <tr className="border-b border-hx-line text-[11px] text-hx-muted">
+                      <th className="px-3 py-2.5 font-medium">View ↓ / Floor →</th>
+                      {usedBands.map((b) => <th key={b.label} className="px-3 py-2.5 font-medium num text-center">{b.label}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {facings.map((fc) => (
+                      <tr key={fc} className="border-b border-hx-line last:border-0">
+                        <td className="px-3 py-2.5 text-[12.5px] font-medium">{fc}</td>
+                        {usedBands.map((b) => {
+                          const v = cell(fc, b);
+                          return <td key={b.label} className={`px-3 py-2.5 num text-[12.5px] text-center ${v ? "font-semibold" : "text-hx-muted"}`}>{v || "—"}</td>;
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
           {/* available units */}
           <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Available units</div>
           <div className="rounded-xl border border-hx-line overflow-hidden">
@@ -170,6 +243,21 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             ))}
           </div>
 
+          {/* floor plans */}
+          {p.floorPlans.length > 0 && (
+            <>
+              <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Floor plans</div>
+              <div className="grid grid-cols-2 gap-3">
+                {p.floorPlans.map((src, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-hx-line overflow-hidden bg-hx-bg">
+                    <img src={src} alt={`Floor plan ${i + 1}`} className="w-full h-40 object-contain" />
+                  </a>
+                ))}
+              </div>
+            </>
+          )}
+
           {/* amenities */}
           {p.amenities.length > 0 && (
             <>
@@ -178,6 +266,28 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
                 {p.amenities.map((a) => (
                   <span key={a} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-hx-bg border border-hx-line text-[12.5px] text-hx-slate"><Check className="w-3.5 h-3.5 text-hx-success" /> {a}</span>
                 ))}
+              </div>
+            </>
+          )}
+
+          {/* what's nearby */}
+          {nearby.length > 0 && (
+            <>
+              <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">What&apos;s nearby</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {nearby.map((nb, i) => {
+                  const Icon = nearbyIcon(nb.category);
+                  return (
+                    <div key={i} className="rounded-xl border border-hx-line p-3 flex items-center gap-3">
+                      <span className="w-9 h-9 rounded-lg bg-hx-red/8 text-hx-red inline-flex items-center justify-center shrink-0"><Icon className="w-4 h-4" /></span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px] font-medium truncate">{nb.name}</div>
+                        <div className="text-[11px] text-hx-muted capitalize">{nb.category}</div>
+                      </div>
+                      {nb.distance && <span className="num text-[12px] font-semibold text-hx-slate shrink-0">{nb.distance}</span>}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

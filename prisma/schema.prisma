@@ -74,6 +74,12 @@ model Property {
   possession         String?
   videoUrl           String?
   images             String[]   @default([])
+  floorPlans         String[]   @default([])
+  nearby             String[]   @default([])
+  totalTowers        Int?
+  totalUnits         Int?
+  projectArea        String?
+  totalFloors        String?
   units              Unit[]
   visits             Visit[]
   bookings           Booking[]
