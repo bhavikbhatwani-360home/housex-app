@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireSuper } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ function fmt(d: Date) {
 }
 
 export default async function LeadDetail({ params }: { params: Promise<{ id: string }> }) {
+  await requireSuper();
   const { id } = await params;
 
   let lead;

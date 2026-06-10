@@ -1,5 +1,6 @@
 import { BarChart3, Users, CalendarCheck, Lock, Building2, Briefcase, AlertCircle, TrendingUp } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireSuper } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ async function getStats() {
 const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
 export default async function Analytics() {
+  await requireSuper();
   const s = await getStats();
 
   const funnel = [

@@ -1,5 +1,6 @@
 import { CalendarCheck, AlertCircle, Building2, Video } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireSuper } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ function fmt(d: Date) {
 }
 
 export default async function VisitsPage() {
+  await requireSuper();
   const { visits, dbError } = await getVisits();
 
   return (

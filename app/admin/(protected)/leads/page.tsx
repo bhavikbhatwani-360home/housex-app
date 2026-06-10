@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Users, AlertCircle } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireSuper } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ const statusColor: Record<string, string> = {
 };
 
 export default async function LeadsPage() {
+  await requireSuper();
   const { rows, dbError } = await getLeads();
 
   return (

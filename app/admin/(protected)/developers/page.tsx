@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Briefcase, AlertCircle } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireSuper } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ async function getDevelopers() {
 }
 
 export default async function AdminDevelopers() {
+  await requireSuper();
   const { devs, dbError } = await getDevelopers();
 
   return (

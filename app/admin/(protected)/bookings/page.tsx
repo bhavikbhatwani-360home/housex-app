@@ -1,5 +1,6 @@
 import { Lock, AlertCircle } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireSuper } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ async function getBookings() {
 }
 
 export default async function AdminBookings() {
+  await requireSuper();
   const { bookings, dbError } = await getBookings();
   const total = bookings.reduce((s, b) => s + (b.status === "Paid" ? b.amount : 0), 0);
 

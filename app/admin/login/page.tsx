@@ -21,7 +21,7 @@ export default function AdminLogin() {
         body: JSON.stringify({ password }),
       });
       const data = await res.json();
-      if (res.ok) router.push("/admin/leads");
+      if (res.ok) router.push(data.role === "sub" ? "/admin/properties" : "/admin/leads");
       else setError(data.error || "Login failed.");
     } catch {
       setError("Something went wrong. Try again.");

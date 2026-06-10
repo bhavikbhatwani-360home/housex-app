@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Building2, Users, CalendarCheck, Lock, Mail, Phone } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireSuper } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function DeveloperDetail({ params }: { params: Promise<{ id: string }> }) {
+  await requireSuper();
   const { id } = await params;
 
   let dev;

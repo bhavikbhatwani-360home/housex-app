@@ -22,7 +22,6 @@ export async function POST(req: Request) {
   };
 
   const name = s(body.name);
-  const developer = s(body.developer);
   const city = s(body.city, "Mumbai (MMR)");
   const locality = s(body.locality);
   const bhk = s(body.bhk);
@@ -33,6 +32,26 @@ export async function POST(req: Request) {
   const status = s(body.status, "Live");
   const brochureUrl = body.brochureUrl ? s(body.brochureUrl) : null;
   const amenities = Array.isArray(body.amenities) ? body.amenities.map((a) => String(a)).filter(Boolean) : [];
+  const description = s(body.description) || null;
+  const possession = s(body.possession) || null;
+  const videoUrl = s(body.videoUrl) || null;
+  const images = Array.isArray(body.images) ? body.images.map((x) => String(x).trim()).filter(Boolean) : [];
+  const floorPlans = Array.isArray(body.floorPlans) ? body.floorPlans.map((x) => String(x).trim()).filter(Boolean) : [];
+  const nearby = Array.isArray(body.nearby) ? body.nearby.map((x) => String(x).trim()).filter(Boolean) : [];
+  const totalTowers = n(body.totalTowers) > 0 ? Math.trunc(n(body.totalTowers)) : null;
+  const totalUnits = n(body.totalUnits) > 0 ? Math.trunc(n(body.totalUnits)) : null;
+  const projectArea = s(body.projectArea) || null;
+  const totalFloors = s(body.totalFloors) || null;
+
+  // on-behalf-of: link to a developer account so leads route to them
+  const developerId = s(body.developerId) || null;
+  let developerName = s(body.developer);
+  if (developerId) {
+    const acc = await prisma.developer.findUnique({ where: { id: developerId }, select: { company: true } }).catch(() => null);
+    if (!acc) return Response.json({ error: "Selected developer account not found." }, { status: 400 });
+    developerName = acc.company;
+  }
+  if (!developerName) return Response.json({ error: "Pick a developer account or type a developer name." }, { status: 400 });
 
   const units = (Array.isArray(body.units) ? (body.units as UnitIn[]) : [])
     .map((u) => ({
@@ -44,8 +63,8 @@ export async function POST(req: Request) {
     }))
     .filter((u) => u.priceLakh > 0);
 
-  if (!name || !developer || !locality || !bhk)
-    return Response.json({ error: "Fill in project name, developer, locality and BHK." }, { status: 400 });
+  if (!name || !locality || !bhk)
+    return Response.json({ error: "Fill in project name, locality and BHK." }, { status: 400 });
   if (units.length === 0)
     return Response.json({ error: "Add at least one unit with a price." }, { status: 400 });
 
@@ -55,8 +74,9 @@ export async function POST(req: Request) {
   try {
     const prop = await prisma.property.create({
       data: {
-        name, developer, city, locality, bhk, facing, carpetSqft, distanceToStationM,
+        name, developer: developerName, developerId, city, locality, bhk, facing, carpetSqft, distanceToStationM,
         reraId, status, brochureUrl, amenities, priceMin, priceMax,
+        description, possession, videoUrl, images, floorPlans, nearby, totalTowers, totalUnits, projectArea, totalFloors,
         units: { create: units },
       },
     });
