@@ -3,11 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft, BadgeCheck, MapPin, Sparkles, Check, Building2, Compass, Train,
-  IndianRupee, Layers, CalendarPlus, MessageSquare, Play, KeyRound, Briefcase,
+  IndianRupee, Layers, Play, KeyRound, Briefcase,
   FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
 import ShareButton from "./ShareButton";
+import PropertyActions from "./PropertyActions";
 
 export const dynamic = "force-dynamic";
 
@@ -342,13 +343,8 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* sticky actions */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-hx-line px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="max-w-2xl mx-auto grid grid-cols-[1fr_auto] gap-2">
-          <Link href="/chat" className="h-11 rounded-xl bg-hx-ink text-white text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5"><MessageSquare className="w-4 h-4" /> Ask HouseX AI about this</Link>
-          <Link href="/chat" className="h-11 px-4 rounded-xl bg-hx-red text-white text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 shadow-hx-red"><CalendarPlus className="w-4 h-4" /> Book a visit</Link>
-        </div>
-      </div>
+      {/* sticky actions — book a visit / request offer directly on this listing */}
+      <PropertyActions propertyId={p.id} propertyName={p.name} locality={p.locality} priceMin={p.priceMin} />
     </div>
   );
 }

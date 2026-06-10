@@ -53,6 +53,19 @@ export async function POST(req: Request) {
       ownerDeveloperId = prop?.developerId ?? null;
     }
 
+    // a booking straight from a property page has no conversation — create a
+    // standalone lead so it still lands in the dashboard and routes to the dev
+    if (!leadId) {
+      const lead = await prisma.lead.create({
+        data: {
+          status: "Visit booked",
+          intent: `Site visit: ${propertyName}`,
+          ...(ownerDeveloperId ? { developerId: ownerDeveloperId } : {}),
+        },
+      });
+      leadId = lead.id;
+    }
+
     if (leadId) {
       await prisma.lead.update({
         where: { id: leadId },
