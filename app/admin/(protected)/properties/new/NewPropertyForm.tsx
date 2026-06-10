@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, AlertCircle, CheckCircle2, X, Search } from "lucide-react";
 
 type UnitRow = { floor: string; priceLakh: string; facing: string; carpetSqft: string };
 type DevOption = { id: string; company: string };
@@ -115,59 +115,7 @@ export default function NewPropertyForm({
         setAiError(data.error || "Couldn't read the brochure.");
         return;
       }
-      const l = data.listing;
-
-      // Attach photos the AI marked as renders/maps to the gallery, and floor
-      // plans to the plans list. Cost sheets are kept for data only. If the AI
-      // didn't classify, fall back to treating everything as a gallery photo.
-      // (PDFs fill data only — no page images to attach.)
-      const kinds: Record<number, string> = {};
-      if (Array.isArray(l.imageKinds)) for (const k of l.imageKinds) kinds[k.index] = k.kind;
-      const gallery: string[] = [];
-      const floorPlans: string[] = [];
-      images.forEach((src, i) => {
-        const kind = kinds[i];
-        if (kind === "floor_plan") floorPlans.push(src);
-        else if (kind === "cost_sheet") return; // data only — don't show buyers
-        else gallery.push(src); // render / location_map / other / unclassified
-      });
-      if (gallery.length) setPhotos((p) => [...p, ...gallery]);
-      if (floorPlans.length) setPlans((p) => [...p, ...floorPlans]);
-      const okBhk = BHKS.includes(l.bhk) ? l.bhk : f.bhk;
-      const okFacing = FACINGS.includes(l.facing) ? l.facing : f.facing;
-      // AI fills everything EXCEPT price approval — a manager reviews before it goes live.
-      setF((p) => ({
-        ...p,
-        name: l.name || p.name,
-        developer: developerId ? p.developer : l.developer || p.developer,
-        city: l.city || p.city,
-        locality: l.locality || p.locality,
-        bhk: okBhk,
-        facing: okFacing,
-        carpetSqft: l.carpetSqft ? String(l.carpetSqft) : p.carpetSqft,
-        distanceToStationM: l.distanceToStationM ? String(l.distanceToStationM) : p.distanceToStationM,
-        reraId: l.reraId || p.reraId,
-        possession: l.possession || p.possession,
-        description: l.description || p.description,
-        amenities: Array.isArray(l.amenities) && l.amenities.length ? l.amenities.join(", ") : p.amenities,
-        nearby: Array.isArray(l.nearby) && l.nearby.length ? l.nearby.join("\n") : p.nearby,
-        totalTowers: l.totalTowers ? String(l.totalTowers) : p.totalTowers,
-        totalUnits: l.totalUnits ? String(l.totalUnits) : p.totalUnits,
-        projectArea: l.projectArea || p.projectArea,
-        totalFloors: l.totalFloors || p.totalFloors,
-        status: "Pending", // AI drafts are never auto-live — manager must approve
-      }));
-      if (Array.isArray(l.units) && l.units.length) {
-        setUnits(
-          l.units.map((u: { floor?: number; priceLakh?: number; facing?: string; carpetSqft?: number }) => ({
-            floor: u.floor ? String(u.floor) : "",
-            priceLakh: u.priceLakh ? String(u.priceLakh) : "",
-            facing: FACINGS.includes(u.facing || "") ? (u.facing as string) : okFacing,
-            carpetSqft: u.carpetSqft ? String(u.carpetSqft) : "",
-          }))
-        );
-      }
-      setAiResult({ confidence: l.confidence || "medium", notes: l.notes || "" });
+      applyExtraction(data, images);
     } catch {
       setAiError("Something went wrong reading the photos. Try again or fill the form manually.");
     } finally {
@@ -175,6 +123,113 @@ export default function NewPropertyForm({
       if (fileRef.current) fileRef.current.value = "";
     }
   };
+
+  // Fill the form from an extraction response. `localImages` are the resized
+  // data URLs we uploaded (so we can attach the ones the AI marked as photos);
+  // empty for PDF/URL extractions.
+  const applyExtraction = (data: { listing: Record<string, unknown> }, localImages: string[]) => {
+    const l = data.listing as {
+      name?: string; developer?: string; city?: string; locality?: string; bhk?: string; facing?: string;
+      carpetSqft?: number; distanceToStationM?: number; reraId?: string; possession?: string; description?: string;
+      amenities?: string[]; nearby?: string[]; totalTowers?: number; totalUnits?: number; projectArea?: string; totalFloors?: string;
+      units?: { floor?: number; priceLakh?: number; facing?: string; carpetSqft?: number }[];
+      imageKinds?: { index: number; kind: string }[]; confidence?: string; notes?: string;
+    };
+    const kinds: Record<number, string> = {};
+    if (Array.isArray(l.imageKinds)) for (const k of l.imageKinds) kinds[k.index] = k.kind;
+    const gallery: string[] = [];
+    const floorPlans: string[] = [];
+    localImages.forEach((src, i) => {
+      const kind = kinds[i];
+      if (kind === "floor_plan") floorPlans.push(src);
+      else if (kind === "cost_sheet") return; // data only — don't show buyers
+      else gallery.push(src);
+    });
+    if (gallery.length) setPhotos((p) => [...p, ...gallery]);
+    if (floorPlans.length) setPlans((p) => [...p, ...floorPlans]);
+    const okBhk = BHKS.includes(l.bhk || "") ? (l.bhk as string) : f.bhk;
+    const okFacing = FACINGS.includes(l.facing || "") ? (l.facing as string) : f.facing;
+    setF((p) => ({
+      ...p,
+      name: l.name || p.name,
+      developer: developerId ? p.developer : l.developer || p.developer,
+      city: l.city || p.city,
+      locality: l.locality || p.locality,
+      bhk: okBhk,
+      facing: okFacing,
+      carpetSqft: l.carpetSqft ? String(l.carpetSqft) : p.carpetSqft,
+      distanceToStationM: l.distanceToStationM ? String(l.distanceToStationM) : p.distanceToStationM,
+      reraId: l.reraId || p.reraId,
+      possession: l.possession || p.possession,
+      description: l.description || p.description,
+      amenities: Array.isArray(l.amenities) && l.amenities.length ? l.amenities.join(", ") : p.amenities,
+      nearby: Array.isArray(l.nearby) && l.nearby.length ? l.nearby.join("\n") : p.nearby,
+      totalTowers: l.totalTowers ? String(l.totalTowers) : p.totalTowers,
+      totalUnits: l.totalUnits ? String(l.totalUnits) : p.totalUnits,
+      projectArea: l.projectArea || p.projectArea,
+      totalFloors: l.totalFloors || p.totalFloors,
+      status: "Pending",
+    }));
+    if (Array.isArray(l.units) && l.units.length) {
+      setUnits(
+        l.units.map((u) => ({
+          floor: u.floor ? String(u.floor) : "",
+          priceLakh: u.priceLakh ? String(u.priceLakh) : "",
+          facing: FACINGS.includes(u.facing || "") ? (u.facing as string) : okFacing,
+          carpetSqft: u.carpetSqft ? String(u.carpetSqft) : "",
+        }))
+      );
+    }
+    setAiResult({ confidence: l.confidence || "medium", notes: l.notes || "" });
+  };
+
+  // ── Find brochure & photos on the web ──
+  const [findBusy, setFindBusy] = useState(false);
+  const [findError, setFindError] = useState("");
+  const [findResult, setFindResult] = useState<{ projectUrl: string; brochureUrl: string; imageUrls: string[]; summary: string; confidence: string } | null>(null);
+
+  const findOnline = async () => {
+    setFindError("");
+    setFindResult(null);
+    setFindBusy(true);
+    try {
+      const res = await fetch("/api/admin/find-brochure", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: f.name, developer: developerId ? devLabel : f.developer, locality: f.locality, city: f.city }),
+      });
+      const data = await res.json();
+      if (res.ok) setFindResult(data.result);
+      else setFindError(data.error || "Web search failed.");
+    } catch {
+      setFindError("Web search failed — try again or upload the brochure manually.");
+    } finally {
+      setFindBusy(false);
+    }
+  };
+
+  // Read a found brochure link (server fetches the PDF) and fill the form.
+  const readBrochureUrl = async (url: string) => {
+    setAiError("");
+    setAiResult(null);
+    setAiBusy(true);
+    try {
+      const res = await fetch("/api/admin/extract-listing", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pdfUrl: url }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAiError(data.error || "Couldn't read that brochure."); return; }
+      applyExtraction(data, []);
+    } catch {
+      setAiError("Couldn't read that brochure — open the link and upload the file instead.");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const addFoundPhotos = (urls: string[]) => setPhotos((p) => [...p, ...urls.filter((u) => !p.includes(u))]);
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF((p) => ({ ...p, [k]: e.target.value }));
@@ -306,7 +361,71 @@ export default function NewPropertyForm({
                     {aiBusy ? "Reading brochure…" : "Upload brochure PDF or photos"}
                   </button>
                   <span className="text-[11px] text-hx-muted">PDF, or JPG/PNG photos (up to 8)</span>
+                  <span className="text-[11px] text-hx-muted">or</span>
+                  <button
+                    type="button"
+                    onClick={findOnline}
+                    disabled={findBusy || !f.name.trim()}
+                    title={!f.name.trim() ? "Add the project name first" : ""}
+                    className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-hx-line text-hx-slate text-[13px] font-semibold hover:bg-hx-bg disabled:opacity-50"
+                  >
+                    {findBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    {findBusy ? "Searching the web…" : "Find online"}
+                  </button>
                 </div>
+
+                {findError && (
+                  <div className="mt-3 flex items-start gap-2 text-[12.5px] text-hx-danger">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {findError}
+                  </div>
+                )}
+                {findResult && (
+                  <div className="mt-3 rounded-lg border border-hx-line bg-white p-3">
+                    <div className="flex items-center gap-1.5 text-[12.5px] font-semibold">
+                      <Search className="w-4 h-4 text-hx-red" /> Found online
+                      <span className={`ml-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded ${findResult.confidence === "high" ? "bg-hx-success/10 text-hx-success" : findResult.confidence === "low" ? "bg-hx-danger/10 text-hx-danger" : "bg-hx-warning/10 text-hx-warning"}`}>
+                        {findResult.confidence} confidence
+                      </span>
+                    </div>
+                    {findResult.summary && <p className="mt-1.5 text-[12px] text-hx-slate leading-relaxed">{findResult.summary}</p>}
+                    <p className="mt-1.5 text-[11px] text-hx-warning">Double-check this is the right project before using it.</p>
+
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      {findResult.projectUrl && (
+                        <a href={findResult.projectUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-hx-red hover:underline">
+                          Open project page ↗
+                        </a>
+                      )}
+                      {findResult.brochureUrl && (
+                        <>
+                          <a href={findResult.brochureUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-hx-red hover:underline">
+                            Open brochure PDF ↗
+                          </a>
+                          <button type="button" onClick={() => readBrochureUrl(findResult.brochureUrl)} disabled={aiBusy} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-hx-ink text-white text-[12px] font-semibold disabled:opacity-50">
+                            {aiBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Read this brochure
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {findResult.imageUrls.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-[11px] font-medium text-hx-slate mb-1.5">Photos found — add the good ones:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {findResult.imageUrls.map((src, i) => (
+                            <div key={i} className="relative w-[88px] h-[66px] rounded-lg overflow-hidden border border-hx-line">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={src} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                        <button type="button" onClick={() => addFoundPhotos(findResult.imageUrls)} className="mt-2 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-hx-line text-hx-slate text-[12px] font-semibold hover:bg-hx-bg">
+                          <Plus className="w-3.5 h-3.5" /> Add these {findResult.imageUrls.length} photos
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {aiError && (
                   <div className="mt-3 flex items-start gap-2 text-[12.5px] text-hx-danger">

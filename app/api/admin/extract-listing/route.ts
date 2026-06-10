@@ -111,14 +111,33 @@ export async function POST(req: Request) {
 
   let images: ImgIn[] = [];
   let pdf: string | null = null;
+  let pdfUrl = "";
   try {
     const body = await req.json();
     const raw = Array.isArray(body?.images) ? body.images : [];
     images = raw.slice(0, MAX_IMAGES).map(parseDataUrl).filter((x: ImgIn | null): x is ImgIn => x !== null);
     pdf = parsePdf(body?.pdf);
+    pdfUrl = typeof body?.pdfUrl === "string" && /^https?:\/\//i.test(body.pdfUrl) ? body.pdfUrl : "";
   } catch {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
+
+  // A found brochure link: fetch it server-side and treat as a PDF.
+  if (!pdf && !images.length && pdfUrl) {
+    try {
+      const r = await fetch(pdfUrl, { redirect: "follow", signal: AbortSignal.timeout(20000) });
+      const ct = r.headers.get("content-type") || "";
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (!r.ok || (!ct.includes("pdf") && !pdfUrl.toLowerCase().endsWith(".pdf")))
+        return Response.json({ error: "That link isn't a downloadable PDF — open it and upload the file instead." }, { status: 422 });
+      if (buf.length > MAX_PDF_BYTES)
+        return Response.json({ error: "That brochure is too large to read automatically." }, { status: 413 });
+      pdf = buf.toString("base64");
+    } catch {
+      return Response.json({ error: "Couldn't download that brochure link — upload the file instead." }, { status: 502 });
+    }
+  }
+
   if (images.length === 0 && !pdf)
     return Response.json({ error: "Upload a brochure PDF, or clear photos (JPG/PNG, under 5MB each)." }, { status: 400 });
 
