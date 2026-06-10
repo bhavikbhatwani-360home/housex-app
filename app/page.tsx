@@ -60,7 +60,6 @@ export default function Landing() {
           </svg>
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
-          <Link href="/pricing" className="hidden sm:inline-flex h-9 px-3 rounded-lg items-center text-[13px] text-hx-slate hover:bg-hx-bg">For developers</Link>
           <Link href="/developer/login" className="hidden sm:inline-flex h-9 px-3 rounded-lg items-center text-[13px] text-hx-slate hover:bg-hx-bg">Sign in</Link>
           <Link href="/chat" className="h-9 px-4 rounded-[10px] bg-hx-red text-white text-[13px] font-medium inline-flex items-center shadow-hx-red">Get started free</Link>
         </div>
@@ -203,7 +202,7 @@ export default function Landing() {
           <div className="flex items-center gap-5 text-[11px]" style={{ color: "#64748B" }}>
             <Link href="/privacy" className="hover:text-white">Privacy</Link>
             <Link href="/terms" className="hover:text-white">Terms</Link>
-            <Link href="/pricing" className="hover:text-white">For developers</Link>
+            <Link href="/pricing" className="hover:text-white">List your project</Link>
             <a href="mailto:hello@housex.ai" className="hover:text-white">Contact</a>
           </div>
         </div>

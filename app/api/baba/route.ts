@@ -79,7 +79,7 @@ export async function POST(req: Request) {
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json(
-      { reply: "HouseX AI's AI isn't connected yet. (Add your ANTHROPIC_API_KEY to enable live replies.)", needsKey: true },
+      { reply: "HouseX AI isn't connected yet. (Add your ANTHROPIC_API_KEY to enable live replies.)", needsKey: true },
       { status: 200 }
     );
   }
