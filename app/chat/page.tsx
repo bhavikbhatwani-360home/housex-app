@@ -169,6 +169,7 @@ export default function Chat() {
     () => false
   );
   const recRef = useRef<SpeechRecognitionLike | null>(null);
+  const sendRef = useRef<(t: string) => void>(() => {});
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const idRef = useRef(0);
@@ -231,6 +232,12 @@ export default function Chat() {
         if (loaded.length) setMessages(loaded);
         lastTsRef.current = maxTs || new Date().toISOString();
       } catch {}
+      // landing-page search box hands the query over via /chat?q=…
+      const q = new URLSearchParams(window.location.search).get("q");
+      if (q && q.trim()) {
+        window.history.replaceState(null, "", "/chat");
+        setTimeout(() => sendRef.current(q), 150);
+      }
     })();
 
     const poll = setInterval(async () => {
@@ -352,6 +359,11 @@ export default function Chat() {
       setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: `I couldn't reach the server just now — check your connection and tap <span class="font-semibold">Retry</span> below.` }]);
     }
   };
+
+  // keep a stable handle on the latest send() for the ?q= auto-send
+  useEffect(() => {
+    sendRef.current = send;
+  });
 
   const toggleMic = () => {
     if (listening) {

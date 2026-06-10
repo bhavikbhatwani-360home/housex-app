@@ -4,6 +4,7 @@ import {
   Sparkles, MessageCircle, Rotate3D, BadgePercent, ArrowRight, CheckCircle2,
   PhoneOff, BadgeCheck, Smartphone,
 } from "lucide-react";
+import HeroSearch from "./HeroSearch";
 
 export const metadata: Metadata = {
   title: "HouseX — Stop scrolling listings. Just talk to HouseX AI.",
@@ -52,12 +53,9 @@ export default function Landing() {
     <div className="min-h-dvh bg-white text-hx-ink">
       {/* ── nav ── */}
       <nav className="px-5 sm:px-8 py-3.5 border-b border-hx-line/70 flex items-center bg-white sticky top-0 z-20">
-        <Link href="/" className="flex items-end" aria-label="HouseX">
-          <span className="text-[19px] font-extrabold tracking-tight leading-none">HOUSE</span>
-          <svg viewBox="20 20 200 200" className="w-[30px] h-[30px] ml-[1px] -mb-[6px] text-hx-red" fill="currentColor" aria-hidden>
-            <path d="M64 70 L116 70 L174 206 L122 206 Z" />
-            <path d="M46 206 L116 128 L208 20 L128 132 L90 206 Z" />
-          </svg>
+        <Link href="/" className="flex items-center" aria-label="HouseX">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/housex-logo.png" alt="HouseX" className="h-9 w-auto" />
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
           <Link href="/developer/login" className="hidden sm:inline-flex h-9 px-3 rounded-lg items-center text-[13px] text-hx-slate hover:bg-hx-bg">Sign in</Link>
@@ -80,13 +78,8 @@ export default function Landing() {
           Chat directly with the developer. No spam calls. No brokers. Free, forever.
         </p>
 
-        {/* search-style CTA */}
-        <Link href="/chat" className="mt-7 mx-auto max-w-[540px] flex items-center gap-2 bg-white rounded-2xl border border-hx-line p-2 pl-4 shadow-hx hover:border-hx-red/40 transition-colors">
-          <span className="flex-1 text-left text-[14px] text-hx-muted truncate">2 BHK in Virar West under ₹60 lakh, near a school…</span>
-          <span className="h-10 px-4 rounded-xl bg-hx-red text-white text-[13px] font-medium inline-flex items-center gap-1.5 shadow-hx-red shrink-0">
-            Ask HouseX AI <ArrowRight className="w-4 h-4" />
-          </span>
-        </Link>
+        {/* search box — type here, lands in the chat with your question already sent */}
+        <HeroSearch />
         <p className="mt-3 text-[12px] text-hx-muted">
           Try: &quot;3BHK in Vasai with parking&quot; · &quot;₹1 Cr flat near a metro&quot; · &quot;Ready to move in Borivali&quot;
         </p>
