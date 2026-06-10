@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
 
 type UnitRow = { floor: string; priceLakh: string; facing: string; carpetSqft: string };
 type DevOption = { id: string; company: string };
@@ -49,13 +49,30 @@ export default function NewPropertyForm({
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState("");
   const [aiResult, setAiResult] = useState<{ confidence: string; notes: string } | null>(null);
+  // Photos pulled from the brochure (data URLs), kept separate from the manual
+  // URL fields and merged on save.
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [plans, setPlans] = useState<string[]>([]);
 
-  const readAsDataUrl = (file: File) =>
+  // Resize an image client-side to keep stored photos light (~1600px JPEG).
+  const resizeImage = (file: File, maxDim = 1600, quality = 0.82) =>
     new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.onerror = () => reject(new Error("read failed"));
-      r.readAsDataURL(file);
+      const img = new window.Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        const m = Math.max(width, height);
+        if (m > maxDim) { const s = maxDim / m; width = Math.round(width * s); height = Math.round(height * s); }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no canvas"));
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("img load")); };
+      img.src = url;
     });
 
   const autofill = async (files: FileList | null) => {
@@ -64,7 +81,8 @@ export default function NewPropertyForm({
     setAiResult(null);
     setAiBusy(true);
     try {
-      const images = await Promise.all(Array.from(files).slice(0, 8).map(readAsDataUrl));
+      const fileArr = Array.from(files).slice(0, 8);
+      const images = await Promise.all(fileArr.map((f) => resizeImage(f)));
       const res = await fetch("/api/admin/extract-listing", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -76,6 +94,22 @@ export default function NewPropertyForm({
         return;
       }
       const l = data.listing;
+
+      // Attach photos the AI marked as renders/maps to the gallery, and floor
+      // plans to the plans list. Cost sheets are kept for data only. If the AI
+      // didn't classify, fall back to treating everything as a gallery photo.
+      const kinds: Record<number, string> = {};
+      if (Array.isArray(l.imageKinds)) for (const k of l.imageKinds) kinds[k.index] = k.kind;
+      const gallery: string[] = [];
+      const floorPlans: string[] = [];
+      images.forEach((src, i) => {
+        const kind = kinds[i];
+        if (kind === "floor_plan") floorPlans.push(src);
+        else if (kind === "cost_sheet") return; // data only — don't show buyers
+        else gallery.push(src); // render / location_map / other / unclassified
+      });
+      if (gallery.length) setPhotos((p) => [...p, ...gallery]);
+      if (floorPlans.length) setPlans((p) => [...p, ...floorPlans]);
       const okBhk = BHKS.includes(l.bhk) ? l.bhk : f.bhk;
       const okFacing = FACINGS.includes(l.facing) ? l.facing : f.facing;
       // AI fills everything EXCEPT price approval — a manager reviews before it goes live.
@@ -152,8 +186,9 @@ export default function NewPropertyForm({
           carpetSqft: Number(f.carpetSqft),
           distanceToStationM: Number(f.distanceToStationM),
           amenities: f.amenities.split(",").map((a) => a.trim()).filter(Boolean),
-          images: f.images.split("\n").map((x) => x.trim()).filter(Boolean),
-          floorPlans: f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean),
+          // brochure photos (data URLs) first, then any manually-pasted URLs
+          images: [...photos, ...f.images.split("\n").map((x) => x.trim()).filter(Boolean)],
+          floorPlans: [...plans, ...f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean)],
           nearby: f.nearby.split("\n").map((x) => x.trim()).filter(Boolean),
           units: units.map((u) => ({
             floor: Number(u.floor), priceLakh: Number(u.priceLakh),
@@ -302,8 +337,16 @@ export default function NewPropertyForm({
               <Input label="Possession" value={f.possession} onChange={set("possession")} placeholder="Ready to move / Dec 2026" />
             </Grid>
             <Textarea label="Description" value={f.description} onChange={(v) => setF((p) => ({ ...p, description: v }))} rows={3} placeholder="A short overview buyers will read…" />
-            <Textarea label="Photo URLs — one per line" value={f.images} onChange={(v) => setF((p) => ({ ...p, images: v }))} rows={3} placeholder="https://…/photo1.jpg" />
-            <Textarea label="Floor plan image URLs — one per line" value={f.floorPlans} onChange={(v) => setF((p) => ({ ...p, floorPlans: v }))} rows={2} placeholder="https://…/2bhk-floorplan.jpg" />
+
+            {photos.length > 0 && (
+              <ThumbStrip label={`Photos from brochure (${photos.length})`} srcs={photos} onRemove={(i) => setPhotos((p) => p.filter((_, j) => j !== i))} />
+            )}
+            {plans.length > 0 && (
+              <ThumbStrip label={`Floor plans from brochure (${plans.length})`} srcs={plans} onRemove={(i) => setPlans((p) => p.filter((_, j) => j !== i))} />
+            )}
+
+            <Textarea label="More photo URLs — one per line (optional)" value={f.images} onChange={(v) => setF((p) => ({ ...p, images: v }))} rows={2} placeholder="https://…/photo1.jpg" />
+            <Textarea label="More floor plan URLs — one per line (optional)" value={f.floorPlans} onChange={(v) => setF((p) => ({ ...p, floorPlans: v }))} rows={2} placeholder="https://…/2bhk-floorplan.jpg" />
           </Card>
 
           <Card title="Project details & location">
@@ -380,6 +423,25 @@ function Textarea({ label, value, onChange, rows, placeholder }: { label: string
       <span className="text-[12px] font-medium text-hx-slate mb-1 block">{label}</span>
       <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} placeholder={placeholder} className="w-full px-3 py-2 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50 resize-none" />
     </label>
+  );
+}
+function ThumbStrip({ label, srcs, onRemove }: { label: string; srcs: string[]; onRemove: (i: number) => void }) {
+  return (
+    <div className="mt-3.5">
+      <span className="text-[12px] font-medium text-hx-slate mb-1.5 block">{label}</span>
+      <div className="flex flex-wrap gap-2">
+        {srcs.map((src, i) => (
+          <div key={i} className="relative w-[88px] h-[66px] rounded-lg overflow-hidden border border-hx-line group">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt="" className="w-full h-full object-cover" />
+            <button type="button" onClick={() => onRemove(i)} aria-label="Remove"
+              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/55 text-white inline-flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 function Select({ label, options, ...props }: { label: string; options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) {

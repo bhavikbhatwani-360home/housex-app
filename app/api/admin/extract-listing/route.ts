@@ -29,8 +29,9 @@ RULES:
 - Only extract what you can actually read in the images. If a field isn't visible, leave it empty ("" for text, 0 for numbers, [] for lists). NEVER guess or invent prices, RERA numbers, or unit data.
 - "bhk" must be one of: "1 BHK", "2 BHK", "3 BHK", "3+ BHK". Pick the most common one if several.
 - "facing" must be one of: "East", "West", "North", "South".
-- For "units", list each floor/price row you can read from the price list. floor and priceLakh are integers; if the brochure gives a single price, output one unit.
+- For "units", read the COST SHEET / price list carefully and list EVERY floor/price row you can see — one entry per floor (or per unit type) with its exact carpet area and price. If different towers or facings have different prices, include each as its own row. If the brochure shows only a single price, output one unit. Do not invent rows you can't read.
 - "nearby" entries are formatted "Category, Name, Distance" (e.g. "School, DAV Public School, 600 m").
+- "imageKinds": classify EACH input image by its position (index, starting at 0) so we know which to show buyers. kind is one of: "render" (a photo/3D render of the building, flat, or amenities — good for the gallery), "floor_plan" (a unit or floor layout drawing), "cost_sheet" (a price list / payment plan — data only, not for the gallery), "location_map" (a map or connectivity chart), "other". Return one entry per image.
 - "confidence" is your overall confidence the manager can trust this draft: "high", "medium", or "low".
 - "notes" is a short message to the manager flagging anything to double-check — ALWAYS mention if prices or the RERA number were unclear or missing.`;
 
@@ -69,6 +70,18 @@ const SCHEMA = {
         required: ["floor", "priceLakh", "facing", "carpetSqft"],
       },
     },
+    imageKinds: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          index: { type: "integer" },
+          kind: { type: "string", enum: ["render", "floor_plan", "cost_sheet", "location_map", "other"] },
+        },
+        required: ["index", "kind"],
+      },
+    },
     confidence: { type: "string", enum: ["high", "medium", "low"] },
     notes: { type: "string" },
   },
@@ -76,7 +89,7 @@ const SCHEMA = {
     "name", "developer", "city", "locality", "bhk", "facing", "carpetSqft",
     "distanceToStationM", "reraId", "possession", "description", "amenities",
     "nearby", "totalTowers", "totalUnits", "projectArea", "totalFloors",
-    "units", "confidence", "notes",
+    "units", "imageKinds", "confidence", "notes",
   ],
 } as const;
 
@@ -109,7 +122,7 @@ export async function POST(req: Request) {
     const client = new Anthropic();
     const res = await client.messages.create({
       model: MODEL,
-      max_tokens: 2048,
+      max_tokens: 3500,
       system: SYSTEM,
       messages: [{ role: "user", content }],
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
