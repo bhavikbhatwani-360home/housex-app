@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, AlertCircle, CheckCircle2, X, Search } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, X } from "lucide-react";
 
 type UnitRow = { floor: string; priceLakh: string; facing: string; carpetSqft: string };
 type DevOption = { id: string; company: string };
@@ -45,25 +45,14 @@ export default function NewPropertyForm({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // ── AI brochure auto-fill ──
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiError, setAiError] = useState("");
-  const [aiResult, setAiResult] = useState<{ confidence: string; notes: string } | null>(null);
-  // Photos pulled from the brochure (data URLs), kept separate from the manual
-  // URL fields and merged on save.
+  // ── photos & floor plans, uploaded straight to the listing ──
+  const photoRef = useRef<HTMLInputElement>(null);
+  const planRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [plans, setPlans] = useState<string[]>([]);
+  const [imgBusy, setImgBusy] = useState(false);
 
   // Resize an image client-side to keep stored photos light (~1600px JPEG).
-  const readAsDataUrl = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.onerror = () => reject(new Error("read failed"));
-      r.readAsDataURL(file);
-    });
-
   const resizeImage = (file: File, maxDim = 1600, quality = 0.82) =>
     new Promise<string>((resolve, reject) => {
       const img = new window.Image();
@@ -84,152 +73,22 @@ export default function NewPropertyForm({
       img.src = url;
     });
 
-  const autofill = async (files: FileList | null) => {
+  // Upload photos / floor plans straight into the listing's galleries.
+  const addImages = async (files: FileList | null, target: "photos" | "plans") => {
     if (!files || files.length === 0) return;
-    setAiError("");
-    setAiResult(null);
-    setAiBusy(true);
+    setImgBusy(true);
     try {
-      const fileArr = Array.from(files).slice(0, 8);
-      const pdfFile = fileArr.find((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
-
-      // A PDF goes to Claude as a document (it reads every page); photos go as
-      // images (and get classified for the gallery).
-      let images: string[] = [];
-      let payload: { pdf?: string; images?: string[] };
-      if (pdfFile) {
-        const pdf = await readAsDataUrl(pdfFile);
-        payload = { pdf };
-      } else {
-        images = await Promise.all(fileArr.map((f) => resizeImage(f)));
-        payload = { images };
-      }
-
-      const res = await fetch("/api/admin/extract-listing", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setAiError(data.error || "Couldn't read the brochure.");
-        return;
-      }
-      applyExtraction(data, images);
+      const urls = await Promise.all(Array.from(files).slice(0, 12).map((fl) => resizeImage(fl)));
+      if (target === "photos") setPhotos((p) => [...p, ...urls]);
+      else setPlans((p) => [...p, ...urls]);
     } catch {
-      setAiError("Something went wrong reading the photos. Try again or fill the form manually.");
+      // ignore — a bad file just doesn't get added
     } finally {
-      setAiBusy(false);
-      if (fileRef.current) fileRef.current.value = "";
+      setImgBusy(false);
+      if (photoRef.current) photoRef.current.value = "";
+      if (planRef.current) planRef.current.value = "";
     }
   };
-
-  // Fill the form from an extraction response. `localImages` are the resized
-  // data URLs we uploaded (so we can attach the ones the AI marked as photos);
-  // empty for PDF/URL extractions.
-  const applyExtraction = (data: { listing: Record<string, unknown> }, localImages: string[]) => {
-    const l = data.listing as {
-      name?: string; developer?: string; city?: string; locality?: string; bhk?: string; facing?: string;
-      carpetSqft?: number; distanceToStationM?: number; reraId?: string; possession?: string; description?: string;
-      amenities?: string[]; nearby?: string[]; totalTowers?: number; totalUnits?: number; projectArea?: string; totalFloors?: string;
-      units?: { floor?: number; priceLakh?: number; facing?: string; carpetSqft?: number }[];
-      imageKinds?: { index: number; kind: string }[]; confidence?: string; notes?: string;
-    };
-    const kinds: Record<number, string> = {};
-    if (Array.isArray(l.imageKinds)) for (const k of l.imageKinds) kinds[k.index] = k.kind;
-    const gallery: string[] = [];
-    const floorPlans: string[] = [];
-    localImages.forEach((src, i) => {
-      const kind = kinds[i];
-      if (kind === "floor_plan") floorPlans.push(src);
-      else if (kind === "cost_sheet") return; // data only — don't show buyers
-      else gallery.push(src);
-    });
-    if (gallery.length) setPhotos((p) => [...p, ...gallery]);
-    if (floorPlans.length) setPlans((p) => [...p, ...floorPlans]);
-    const okBhk = BHKS.includes(l.bhk || "") ? (l.bhk as string) : f.bhk;
-    const okFacing = FACINGS.includes(l.facing || "") ? (l.facing as string) : f.facing;
-    setF((p) => ({
-      ...p,
-      name: l.name || p.name,
-      developer: developerId ? p.developer : l.developer || p.developer,
-      city: l.city || p.city,
-      locality: l.locality || p.locality,
-      bhk: okBhk,
-      facing: okFacing,
-      carpetSqft: l.carpetSqft ? String(l.carpetSqft) : p.carpetSqft,
-      distanceToStationM: l.distanceToStationM ? String(l.distanceToStationM) : p.distanceToStationM,
-      reraId: l.reraId || p.reraId,
-      possession: l.possession || p.possession,
-      description: l.description || p.description,
-      amenities: Array.isArray(l.amenities) && l.amenities.length ? l.amenities.join(", ") : p.amenities,
-      nearby: Array.isArray(l.nearby) && l.nearby.length ? l.nearby.join("\n") : p.nearby,
-      totalTowers: l.totalTowers ? String(l.totalTowers) : p.totalTowers,
-      totalUnits: l.totalUnits ? String(l.totalUnits) : p.totalUnits,
-      projectArea: l.projectArea || p.projectArea,
-      totalFloors: l.totalFloors || p.totalFloors,
-      status: "Pending",
-    }));
-    if (Array.isArray(l.units) && l.units.length) {
-      setUnits(
-        l.units.map((u) => ({
-          floor: u.floor ? String(u.floor) : "",
-          priceLakh: u.priceLakh ? String(u.priceLakh) : "",
-          facing: FACINGS.includes(u.facing || "") ? (u.facing as string) : okFacing,
-          carpetSqft: u.carpetSqft ? String(u.carpetSqft) : "",
-        }))
-      );
-    }
-    setAiResult({ confidence: l.confidence || "medium", notes: l.notes || "" });
-  };
-
-  // ── Find brochure & photos on the web ──
-  const [findBusy, setFindBusy] = useState(false);
-  const [findError, setFindError] = useState("");
-  const [findResult, setFindResult] = useState<{ projectUrl: string; brochureUrl: string; imageUrls: string[]; summary: string; confidence: string } | null>(null);
-
-  const findOnline = async () => {
-    setFindError("");
-    setFindResult(null);
-    setFindBusy(true);
-    try {
-      const res = await fetch("/api/admin/find-brochure", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: f.name, developer: developerId ? devLabel : f.developer, locality: f.locality, city: f.city }),
-      });
-      const data = await res.json();
-      if (res.ok) setFindResult(data.result);
-      else setFindError(data.error || "Web search failed.");
-    } catch {
-      setFindError("Web search failed — try again or upload the brochure manually.");
-    } finally {
-      setFindBusy(false);
-    }
-  };
-
-  // Read a found brochure link (server fetches the PDF) and fill the form.
-  const readBrochureUrl = async (url: string) => {
-    setAiError("");
-    setAiResult(null);
-    setAiBusy(true);
-    try {
-      const res = await fetch("/api/admin/extract-listing", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pdfUrl: url }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setAiError(data.error || "Couldn't read that brochure."); return; }
-      applyExtraction(data, []);
-    } catch {
-      setAiError("Couldn't read that brochure — open the link and upload the file instead.");
-    } finally {
-      setAiBusy(false);
-    }
-  };
-
-  const addFoundPhotos = (urls: string[]) => setPhotos((p) => [...p, ...urls.filter((u) => !p.includes(u))]);
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF((p) => ({ ...p, [k]: e.target.value }));
@@ -331,123 +190,6 @@ export default function NewPropertyForm({
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 max-w-5xl">
         <form id="adminpropform" onSubmit={submit} className="space-y-5">
-          {/* ── AI brochure auto-fill ── */}
-          <div className="rounded-xl border border-hx-red/30 bg-hx-red/[0.03] p-5">
-            <div className="flex items-start gap-3">
-              <span className="w-9 h-9 rounded-lg bg-hx-red/10 text-hx-red inline-flex items-center justify-center shrink-0">
-                <Sparkles className="w-4.5 h-4.5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[13.5px] font-semibold">Auto-fill from brochure</div>
-                <p className="text-[12px] text-hx-muted mt-0.5 leading-relaxed">
-                  Drop the brochure PDF (or photos of it). HouseX AI reads every page and fills the form below — then you review &amp; edit (especially price) before publishing.
-                </p>
-                <div className="mt-3 flex items-center gap-2.5 flex-wrap">
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="application/pdf,image/jpeg,image/png,image/webp"
-                    multiple
-                    onChange={(e) => autofill(e.target.files)}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={aiBusy}
-                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-50"
-                  >
-                    {aiBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                    {aiBusy ? "Reading brochure…" : "Upload brochure PDF or photos"}
-                  </button>
-                  <span className="text-[11px] text-hx-muted">PDF, or JPG/PNG photos (up to 8)</span>
-                  <span className="text-[11px] text-hx-muted">or</span>
-                  <button
-                    type="button"
-                    onClick={findOnline}
-                    disabled={findBusy || !f.name.trim()}
-                    title={!f.name.trim() ? "Add the project name first" : ""}
-                    className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-hx-line text-hx-slate text-[13px] font-semibold hover:bg-hx-bg disabled:opacity-50"
-                  >
-                    {findBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                    {findBusy ? "Searching the web…" : "Find online"}
-                  </button>
-                </div>
-
-                {findError && (
-                  <div className="mt-3 flex items-start gap-2 text-[12.5px] text-hx-danger">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {findError}
-                  </div>
-                )}
-                {findResult && (
-                  <div className="mt-3 rounded-lg border border-hx-line bg-white p-3">
-                    <div className="flex items-center gap-1.5 text-[12.5px] font-semibold">
-                      <Search className="w-4 h-4 text-hx-red" /> Found online
-                      <span className={`ml-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded ${findResult.confidence === "high" ? "bg-hx-success/10 text-hx-success" : findResult.confidence === "low" ? "bg-hx-danger/10 text-hx-danger" : "bg-hx-warning/10 text-hx-warning"}`}>
-                        {findResult.confidence} confidence
-                      </span>
-                    </div>
-                    {findResult.summary && <p className="mt-1.5 text-[12px] text-hx-slate leading-relaxed">{findResult.summary}</p>}
-                    <p className="mt-1.5 text-[11px] text-hx-warning">Double-check this is the right project before using it.</p>
-
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      {findResult.projectUrl && (
-                        <a href={findResult.projectUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-hx-red hover:underline">
-                          Open project page ↗
-                        </a>
-                      )}
-                      {findResult.brochureUrl && (
-                        <>
-                          <a href={findResult.brochureUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-hx-red hover:underline">
-                            Open brochure PDF ↗
-                          </a>
-                          <button type="button" onClick={() => readBrochureUrl(findResult.brochureUrl)} disabled={aiBusy} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-hx-ink text-white text-[12px] font-semibold disabled:opacity-50">
-                            {aiBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Read this brochure
-                          </button>
-                        </>
-                      )}
-                    </div>
-
-                    {findResult.imageUrls.length > 0 && (
-                      <div className="mt-3">
-                        <div className="text-[11px] font-medium text-hx-slate mb-1.5">Photos found — add the good ones:</div>
-                        <div className="flex flex-wrap gap-2">
-                          {findResult.imageUrls.map((src, i) => (
-                            <div key={i} className="relative w-[88px] h-[66px] rounded-lg overflow-hidden border border-hx-line">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={src} alt="" className="w-full h-full object-cover" />
-                            </div>
-                          ))}
-                        </div>
-                        <button type="button" onClick={() => addFoundPhotos(findResult.imageUrls)} className="mt-2 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-hx-line text-hx-slate text-[12px] font-semibold hover:bg-hx-bg">
-                          <Plus className="w-3.5 h-3.5" /> Add these {findResult.imageUrls.length} photos
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {aiError && (
-                  <div className="mt-3 flex items-start gap-2 text-[12.5px] text-hx-danger">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {aiError}
-                  </div>
-                )}
-                {aiResult && (
-                  <div className="mt-3 rounded-lg border border-hx-line bg-white p-3">
-                    <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-hx-success">
-                      <CheckCircle2 className="w-4 h-4" /> Draft filled below — please review
-                      <span className={`ml-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded ${aiResult.confidence === "high" ? "bg-hx-success/10 text-hx-success" : aiResult.confidence === "low" ? "bg-hx-danger/10 text-hx-danger" : "bg-hx-warning/10 text-hx-warning"}`}>
-                        {aiResult.confidence} confidence
-                      </span>
-                    </div>
-                    {aiResult.notes && <p className="mt-1.5 text-[12px] text-hx-slate leading-relaxed">⚠️ {aiResult.notes}</p>}
-                    <p className="mt-1.5 text-[11.5px] text-hx-muted">Status set to <strong>Pending</strong> — verify the price &amp; offers, then set Status to <strong>Live</strong> to approve.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
           <Card title="On behalf of developer">
             <label className="block">
               <span className="text-[12px] font-medium text-hx-slate mb-1 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-hx-red" /> Developer account</span>
@@ -511,15 +253,28 @@ export default function NewPropertyForm({
             </Grid>
             <Textarea label="Description" value={f.description} onChange={(v) => setF((p) => ({ ...p, description: v }))} rows={3} placeholder="A short overview buyers will read…" />
 
-            {photos.length > 0 && (
-              <ThumbStrip label={`Photos from brochure (${photos.length})`} srcs={photos} onRemove={(i) => setPhotos((p) => p.filter((_, j) => j !== i))} />
-            )}
-            {plans.length > 0 && (
-              <ThumbStrip label={`Floor plans from brochure (${plans.length})`} srcs={plans} onRemove={(i) => setPlans((p) => p.filter((_, j) => j !== i))} />
-            )}
+            {/* ── photo upload ── */}
+            <div className="mt-3.5">
+              <span className="text-[12px] font-medium text-hx-slate mb-1.5 block">Photos {photos.length > 0 && <span className="text-hx-muted">· {photos.length}</span>}</span>
+              <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => addImages(e.target.files, "photos")} className="hidden" />
+              <button type="button" onClick={() => photoRef.current?.click()} disabled={imgBusy}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-50">
+                {imgBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />} Upload photos
+              </button>
+              <span className="ml-2 text-[11px] text-hx-muted">JPG / PNG — the first one is the cover</span>
+              {photos.length > 0 && <ThumbStrip label="" srcs={photos} onRemove={(i) => setPhotos((p) => p.filter((_, j) => j !== i))} />}
+            </div>
 
-            <Textarea label="More photo URLs — one per line (optional)" value={f.images} onChange={(v) => setF((p) => ({ ...p, images: v }))} rows={2} placeholder="https://…/photo1.jpg" />
-            <Textarea label="More floor plan URLs — one per line (optional)" value={f.floorPlans} onChange={(v) => setF((p) => ({ ...p, floorPlans: v }))} rows={2} placeholder="https://…/2bhk-floorplan.jpg" />
+            {/* ── floor plan upload ── */}
+            <div className="mt-4">
+              <span className="text-[12px] font-medium text-hx-slate mb-1.5 block">Floor plans {plans.length > 0 && <span className="text-hx-muted">· {plans.length}</span>}</span>
+              <input ref={planRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => addImages(e.target.files, "plans")} className="hidden" />
+              <button type="button" onClick={() => planRef.current?.click()} disabled={imgBusy}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-hx-line text-hx-slate text-[13px] font-semibold hover:bg-hx-bg disabled:opacity-50">
+                {imgBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />} Upload floor plans
+              </button>
+              {plans.length > 0 && <ThumbStrip label="" srcs={plans} onRemove={(i) => setPlans((p) => p.filter((_, j) => j !== i))} />}
+            </div>
           </Card>
 
           <Card title="Project details & location">

@@ -3,12 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft, BadgeCheck, MapPin, Sparkles, Check, Building2, Compass, Train,
-  IndianRupee, Layers, Play, KeyRound, Briefcase,
+  Layers, Play, KeyRound, Briefcase, ExternalLink,
   FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
 import ShareButton from "./ShareButton";
 import PropertyActions from "./PropertyActions";
+import EmiCalculator from "./EmiCalculator";
 
 export const dynamic = "force-dynamic";
 
@@ -32,14 +33,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   } catch {
     return { title: "Property — HouseX" };
   }
-}
-
-function emiPerMonth(priceLakh: number) {
-  const P = priceLakh * 100000;
-  const r = 0.086 / 12;
-  const n = 240;
-  const emi = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-  return Math.round(emi).toLocaleString("en-IN");
 }
 
 function youtubeId(url: string | null): string | null {
@@ -112,6 +105,20 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
     return { category: parts[0] || "", name: parts[1] || parts[0] || "", distance: parts[2] || "" };
   });
 
+  // a readable "why this home" line built from the listing's own facts
+  const whyBits = [
+    `RERA-verified${p.bhk ? ` ${p.bhk}` : ""}`,
+    p.facing ? `${p.facing}-facing` : null,
+    p.distanceToStationM > 0 ? `just ${p.distanceToStationM} m from the station` : null,
+    p.possession ? `possession ${p.possession}` : null,
+  ].filter(Boolean);
+  const whyLine =
+    whyBits.join(", ") +
+    (p.amenities.length ? `, with ${p.amenities.slice(0, 2).join(" & ").toLowerCase()}` : "") +
+    ".";
+
+  const unitsLeft = p.units.length;
+
   const facts = [
     { icon: Building2, label: "Configuration", value: p.bhk },
     { icon: Compass, label: "Facing", value: p.facing },
@@ -125,10 +132,11 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
     <div className="min-h-dvh bg-white text-hx-ink pb-[88px]">
       <header className="sticky top-0 z-20 h-14 bg-white/90 backdrop-blur border-b border-hx-line flex items-center px-4 gap-3">
         <Link href="/chat" className="w-9 h-9 rounded-full border border-hx-line inline-flex items-center justify-center text-hx-slate hover:bg-hx-bg"><ArrowLeft className="w-4 h-4" /></Link>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="text-[14px] font-semibold tracking-tight truncate">{p.name}</div>
           <div className="text-[11px] text-hx-muted truncate">{p.developer}</div>
         </div>
+        <span className="num text-[15px] font-extrabold tracking-tight shrink-0">{range}</span>
         <ShareButton title={`${p.name} — ${range} · ${p.bhk} in ${p.locality} · HouseX`} />
       </header>
 
@@ -197,21 +205,16 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           {/* why it fits */}
           <div className="mt-5 rounded-2xl border border-hx-line bg-hx-bg/60 p-4">
             <div className="flex items-center gap-1.5 text-[12px] font-semibold text-hx-red mb-2"><Sparkles className="w-3.5 h-3.5" /> Why this home</div>
-            <div className="flex flex-wrap gap-2">
+            <p className="text-[13.5px] text-hx-ink leading-relaxed">{whyLine}</p>
+            <div className="mt-2.5 flex flex-wrap gap-2">
               {[`RERA-verified`, `${p.distanceToStationM} m from station`, `${p.facing}-facing`, ...p.amenities.slice(0, 4)].map((chip) => (
                 <span key={chip} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-hx-line text-[12px] font-medium text-hx-slate"><Check className="w-3 h-3 text-hx-success" /> {chip}</span>
               ))}
             </div>
           </div>
 
-          {/* affordability */}
-          <div className="mt-4 rounded-2xl border border-hx-line p-4 flex items-center gap-4">
-            <span className="w-11 h-11 rounded-xl bg-hx-red/8 text-hx-red inline-flex items-center justify-center shrink-0"><IndianRupee className="w-5 h-5" /></span>
-            <div>
-              <div className="text-[12px] text-hx-muted">Estimated EMI (from ₹{p.priceMin} L, 8.6% · 20 yrs)</div>
-              <div className="num text-[20px] font-bold tracking-tight">₹{emiPerMonth(p.priceMin)}<span className="text-[13px] font-medium text-hx-muted">/month</span></div>
-            </div>
-          </div>
+          {/* affordability — interactive EMI */}
+          <EmiCalculator priceLakh={p.priceMin} />
 
           {/* key facts */}
           <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Key facts</div>
@@ -257,7 +260,14 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           )}
 
           {/* available units */}
-          <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Available units</div>
+          <div className="mt-6 flex items-center gap-2 mb-2">
+            <span className="text-[12px] uppercase tracking-wider text-hx-muted font-medium">Available units</span>
+            {unitsLeft > 0 && (
+              <span className={`text-[10.5px] font-semibold rounded-full px-2 py-0.5 ${unitsLeft <= 3 ? "bg-hx-red/10 text-hx-red" : "bg-hx-bg text-hx-slate"}`}>
+                {unitsLeft <= 3 ? `Only ${unitsLeft} left` : `${unitsLeft} available`}
+              </span>
+            )}
+          </div>
           <div className="rounded-xl border border-hx-line overflow-hidden">
             {p.units.length === 0 && <div className="p-4 text-[13px] text-hx-muted">Contact the developer for availability.</div>}
             {p.units.map((u, i) => (
@@ -320,13 +330,30 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             </>
           )}
 
-          {/* trust */}
+          {/* trust + RERA verify */}
           <div className="mt-6 rounded-2xl border border-hx-line p-4 flex items-start gap-3">
             <span className="w-10 h-10 rounded-xl bg-hx-success/10 text-hx-success inline-flex items-center justify-center shrink-0"><BadgeCheck className="w-5 h-5" /></span>
-            <div>
+            <div className="min-w-0">
               <div className="text-[13.5px] font-semibold">RERA verified · {p.reraId || "registered"}</div>
               <div className="text-[12px] text-hx-muted mt-0.5">By {p.developer}. Every HouseX listing is checked — no fake listings, no brokers.</div>
+              {p.reraId && (
+                <a href="https://maharera.maharashtra.gov.in/registered-projects" target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-hx-red hover:underline">
+                  Verify on MahaRERA <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
             </div>
+          </div>
+
+          {/* on the map */}
+          <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">On the map</div>
+          <div className="rounded-2xl border border-hx-line overflow-hidden">
+            <iframe
+              title={`${p.name} location`}
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(`${p.name}, ${p.locality}, ${p.city}`)}&z=14&output=embed`}
+              className="w-full h-[220px] border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
           </div>
 
           {/* developer claim — only on unclaimed (seeded) listings */}
