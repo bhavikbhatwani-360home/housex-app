@@ -144,7 +144,8 @@ model Message {
   id             String       @id @default(cuid())
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role           String // "user" | "baba"
+  role           String // "user" | "baba" | "developer"
   content        String
+  senderName     String?
   createdAt      DateTime     @default(now())
 }

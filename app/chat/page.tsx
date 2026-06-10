@@ -11,8 +11,9 @@ type PropertyCard = {
 };
 
 type Msg =
-  | { id: number; role: "user"; text: string }
-  | { id: number; role: "baba"; html: string; properties?: PropertyCard[] };
+  | { id: number; role: "user"; text: string; sid?: string }
+  | { id: number; role: "baba"; html: string; properties?: PropertyCard[]; sid?: string }
+  | { id: number; role: "developer"; html: string; senderName: string; sid?: string };
 
 const STRIPES = [
   "repeating-linear-gradient(135deg,#F1E2D8 0 12px,#FAEFE7 12px 24px)",
@@ -43,6 +44,12 @@ function htmlToText(html: string) {
 function formatReply(text: string) {
   const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return esc.replace(/\*\*(.+?)\*\*/g, '<span class="font-semibold">$1</span>').replace(/\n/g, "<br/>");
+}
+
+function initials(s: string) {
+  const base = s.replace(/·.*/, "").trim();
+  const parts = base.split(/\s+/);
+  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "D";
 }
 
 function PropertyCardView({ p, stripe, onBook, onToken }: { p: PropertyCard; stripe: string; onBook: () => void; onToken: () => void }) {
@@ -92,12 +99,69 @@ export default function Chat() {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const idRef = useRef(0);
   const convIdRef = useRef<string>("");
-  if (!convIdRef.current) convIdRef.current = crypto.randomUUID();
+  const seenRef = useRef<Set<string>>(new Set());
+  const lastTsRef = useRef<string>("");
   const empty = messages.length === 0;
+
+  const ensureConvId = () => {
+    if (convIdRef.current) return convIdRef.current;
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("hx-conv");
+      convIdRef.current = saved || crypto.randomUUID();
+      if (!saved) localStorage.setItem("hx-conv", convIdRef.current);
+    }
+    return convIdRef.current;
+  };
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, typing]);
+
+  // Resume the conversation + receive developer replies (poll every 5s)
+  useEffect(() => {
+    const cid = ensureConvId();
+    if (!cid) return;
+
+    // load existing history (so the chat resumes, incl. any developer replies)
+    (async () => {
+      try {
+        const res = await fetch(`/api/messages?conversationId=${cid}`);
+        const data = await res.json();
+        const loaded: Msg[] = [];
+        let maxTs = "";
+        for (const m of data.messages || []) {
+          if (seenRef.current.has(m.id)) continue;
+          seenRef.current.add(m.id);
+          if (m.createdAt > maxTs) maxTs = m.createdAt;
+          if (m.role === "user") loaded.push({ id: ++idRef.current, role: "user", text: m.content, sid: m.id });
+          else if (m.role === "developer") loaded.push({ id: ++idRef.current, role: "developer", html: formatReply(m.content), senderName: m.senderName || "Developer", sid: m.id });
+          else loaded.push({ id: ++idRef.current, role: "baba", html: formatReply(m.content), sid: m.id });
+        }
+        if (loaded.length) setMessages(loaded);
+        lastTsRef.current = maxTs || new Date().toISOString();
+      } catch {}
+    })();
+
+    const poll = setInterval(async () => {
+      const c = convIdRef.current;
+      if (!c) return;
+      try {
+        const since = lastTsRef.current ? `&since=${encodeURIComponent(lastTsRef.current)}` : "";
+        const res = await fetch(`/api/messages?conversationId=${c}&role=developer${since}`);
+        const data = await res.json();
+        const incoming: Msg[] = [];
+        for (const m of data.messages || []) {
+          if (seenRef.current.has(m.id)) continue;
+          seenRef.current.add(m.id);
+          if (m.createdAt > lastTsRef.current) lastTsRef.current = m.createdAt;
+          incoming.push({ id: ++idRef.current, role: "developer", html: formatReply(m.content), senderName: m.senderName || "Developer", sid: m.id });
+        }
+        if (incoming.length) setMessages((cur) => [...cur, ...incoming]);
+      } catch {}
+    }, 5000);
+    return () => clearInterval(poll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const autoGrow = () => {
     const el = taRef.current;
@@ -121,7 +185,7 @@ export default function Chat() {
       const res = await fetch("/api/baba", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId: convIdRef.current, messages: [...history, { role: "user", content: txt }] }),
+        body: JSON.stringify({ conversationId: ensureConvId(), messages: [...history, { role: "user", content: txt }] }),
       });
       const data = await res.json();
       setTyping(false);
@@ -136,7 +200,11 @@ export default function Chat() {
     setMessages([]);
     setInput("");
     setTyping(false);
-    convIdRef.current = crypto.randomUUID();
+    const nid = crypto.randomUUID();
+    convIdRef.current = nid;
+    if (typeof window !== "undefined") localStorage.setItem("hx-conv", nid);
+    seenRef.current = new Set();
+    lastTsRef.current = new Date().toISOString();
   };
 
   const confirmVisit = async (date: string, slot: string, mode: string) => {
@@ -147,7 +215,7 @@ export default function Chat() {
       const res = await fetch("/api/visits", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId: convIdRef.current, propertyId: p.id, propertyName: p.name, date, slot, mode }),
+        body: JSON.stringify({ conversationId: ensureConvId(), propertyId: p.id, propertyName: p.name, date, slot, mode }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -171,7 +239,7 @@ export default function Chat() {
       const res = await fetch("/api/token", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId: convIdRef.current, propertyId: p.id, propertyName: p.name, buyerName, buyerPhone, buyerPan }),
+        body: JSON.stringify({ conversationId: ensureConvId(), propertyId: p.id, propertyName: p.name, buyerName, buyerPhone, buyerPan }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -240,14 +308,29 @@ export default function Chat() {
           </div>
         ) : (
           <div className="mx-auto max-w-3xl px-4 sm:px-6 py-6 space-y-6">
-            {messages.map((m) =>
-              m.role === "user" ? (
-                <div key={m.id} className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-br-md bg-hx-bg border border-hx-line px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap">
-                    {m.text}
+            {messages.map((m) => {
+              if (m.role === "user") {
+                return (
+                  <div key={m.id} className="flex justify-end">
+                    <div className="max-w-[85%] rounded-2xl rounded-br-md bg-hx-bg border border-hx-line px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap">{m.text}</div>
                   </div>
-                </div>
-              ) : (
+                );
+              }
+              if (m.role === "developer") {
+                return (
+                  <div key={m.id} className="flex gap-3">
+                    <span className="w-7 h-7 rounded-full bg-hx-ink text-white text-[10px] font-bold inline-flex items-center justify-center shrink-0 mt-0.5">{initials(m.senderName)}</span>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <div className="text-[12px] font-semibold text-hx-slate mb-1 flex items-center gap-1.5">
+                        {m.senderName}
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-hx-red bg-hx-red/10 rounded px-1.5 py-[1px]">Developer</span>
+                      </div>
+                      <div className="inline-block rounded-2xl rounded-tl-md bg-white border border-hx-line px-3.5 py-2.5 text-[15px] leading-relaxed text-hx-ink" dangerouslySetInnerHTML={{ __html: m.html }} />
+                    </div>
+                  </div>
+                );
+              }
+              return (
                 <div key={m.id} className="flex gap-3">
                   <span className="w-7 h-7 rounded-lg bg-hx-red inline-flex items-center justify-center shrink-0 mt-0.5 shadow-hx-red">
                     <Sparkles className="w-3.5 h-3.5 text-white" />
@@ -264,8 +347,8 @@ export default function Chat() {
                     )}
                   </div>
                 </div>
-              )
-            )}
+              );
+            })}
             {typing && (
               <div className="flex gap-3">
                 <span className="w-7 h-7 rounded-lg bg-hx-red inline-flex items-center justify-center shrink-0 mt-0.5 shadow-hx-red">
