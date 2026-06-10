@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft, BadgeCheck, MapPin, Sparkles, Check, Building2, Compass, Train,
-  IndianRupee, Layers, CalendarPlus, MessageSquare, Play, KeyRound,
+  IndianRupee, Layers, CalendarPlus, MessageSquare, Play, KeyRound, Briefcase,
   FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -327,6 +327,18 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
               <div className="text-[12px] text-hx-muted mt-0.5">By {p.developer}. Every HouseX listing is checked — no fake listings, no brokers.</div>
             </div>
           </div>
+
+          {/* developer claim — only on unclaimed (seeded) listings */}
+          {!p.developerId && (
+            <Link href={`/claim/${p.id}`} className="mt-3 rounded-2xl border border-hx-line bg-hx-bg/60 p-4 flex items-center gap-3 hover:border-hx-red/40 transition-colors">
+              <span className="w-9 h-9 rounded-xl bg-hx-red/8 text-hx-red inline-flex items-center justify-center shrink-0"><Briefcase className="w-4.5 h-4.5" /></span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold">Are you the developer of {p.name}?</div>
+                <div className="text-[12px] text-hx-muted">Claim this listing free — get every lead routed to you.</div>
+              </div>
+              <span className="text-[13px] font-semibold text-hx-red shrink-0">Claim →</span>
+            </Link>
+          )}
         </div>
       </div>
 

@@ -83,7 +83,21 @@ model Property {
   units              Unit[]
   visits             Visit[]
   bookings           Booking[]
+  claims             ListingClaim[]
   createdAt          DateTime   @default(now())
+}
+
+model ListingClaim {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name       String
+  company    String
+  email      String
+  phone      String
+  message    String?
+  status     String   @default("Pending") // Pending | Approved | Rejected
+  createdAt  DateTime @default(now())
 }
 
 model Unit {

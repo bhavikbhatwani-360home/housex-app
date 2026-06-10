@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Users, Building2, MessageSquare, CalendarCheck, Lock, Briefcase, BarChart3 } from "lucide-react";
+import { Users, Building2, MessageSquare, CalendarCheck, Lock, Briefcase, BarChart3, BadgeCheck } from "lucide-react";
 import { getAdminRole } from "@/lib/admin";
+import { prisma } from "@/lib/db";
 import LogoutButton from "../LogoutButton";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,9 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   const role = await getAdminRole();
   if (!role) redirect("/admin/login");
   const isSuper = role === "super";
+  const pendingClaims = isSuper
+    ? await prisma.listingClaim.count({ where: { status: "Pending" } }).catch(() => 0)
+    : 0;
 
   return (
     <div className="min-h-dvh flex" style={{ background: "#f6f7f9" }}>
@@ -36,6 +40,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
           <NavLink href="/admin/properties" icon={<Building2 className="w-4 h-4" />}>Properties</NavLink>
           {isSuper && (
             <>
+              <NavLink href="/admin/claims" icon={<BadgeCheck className="w-4 h-4" />} badge={pendingClaims}>Claims</NavLink>
               <NavLink href="/admin/developers" icon={<Briefcase className="w-4 h-4" />}>Developers</NavLink>
               <NavLink href="/admin/analytics" icon={<BarChart3 className="w-4 h-4" />}>Analytics</NavLink>
             </>
@@ -59,11 +64,12 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   );
 }
 
-function NavLink({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) {
+function NavLink({ href, icon, children, badge }: { href: string; icon: React.ReactNode; children: React.ReactNode; badge?: number }) {
   return (
     <Link href={href} className="flex items-center gap-2.5 px-3 h-9 rounded-lg text-[13px] font-medium text-hx-slate hover:bg-hx-bg transition-colors">
       {icon}
-      {children}
+      <span className="flex-1">{children}</span>
+      {badge ? <span className="num text-[10.5px] font-semibold text-white bg-hx-red rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{badge}</span> : null}
     </Link>
   );
 }
