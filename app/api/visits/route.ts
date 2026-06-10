@@ -18,6 +18,8 @@ export async function POST(req: Request) {
   const date = s(body.date);
   const slot = s(body.slot);
   const mode = s(body.mode) || "In-person";
+  const who = s(body.who).slice(0, 60);
+  const note = s(body.note).slice(0, 400);
   const buyerName = s(body.buyerName);
   const buyerPhone = s(body.buyerPhone);
 
@@ -79,7 +81,7 @@ export async function POST(req: Request) {
       });
     }
 
-    await prisma.visit.create({
+    const visit = await prisma.visit.create({
       data: { propertyId: propertyId ?? null, propertyName, leadId: leadId ?? null, date, slot, mode, buyerName, buyerPhone },
     });
 
@@ -90,13 +92,16 @@ export async function POST(req: Request) {
         `New site visit — ${propertyName}`,
         "🎉 New site visit booked",
         `<p><strong>${buyerName}</strong> (${buyerPhone}) booked a <strong>${mode.toLowerCase()}</strong> visit to <strong>${propertyName}</strong>.</p>
-         <p><strong>${date} · ${slot}</strong></p>
+         <p><strong>${date} · ${slot}</strong>${who ? ` · ${who}` : ""}</p>
+         ${note ? `<p>Buyer's note: “${note}”</p>` : ""}
          <p>Respond quickly — fast replies convert far better.</p>`,
         "/developer/visits"
       );
     }
 
-    return Response.json({ ok: true, summary: `${propertyName} · ${date} · ${slot} · ${mode}` });
+    // short human-friendly reference for the buyer's pass
+    const ref = "HX-" + visit.id.slice(-5).toUpperCase();
+    return Response.json({ ok: true, ref, summary: `${propertyName} · ${date} · ${slot} · ${mode}` });
   } catch (err) {
     console.error("Create visit error:", err);
     return Response.json({ error: "Could not book — is the database connected?" }, { status: 500 });

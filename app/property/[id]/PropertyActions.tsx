@@ -2,12 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MessageSquare, CalendarPlus, BadgePercent, X, Check, Building2, Video, Loader2, CheckCircle2 } from "lucide-react";
+import { MessageSquare, CalendarPlus, BadgePercent, X, Check, Video, Loader2, CheckCircle2, Sunrise, Sun, Sunset, Footprints, Users, User, Briefcase, Navigation } from "lucide-react";
 
-const SLOTS = ["10:00 AM", "11:30 AM", "2:00 PM", "4:00 PM", "6:00 PM"];
+const TIME_GROUPS = [
+  { label: "Morning", icon: Sunrise, slots: ["9:00 AM", "10:00 AM", "11:00 AM"] },
+  { label: "Afternoon", icon: Sun, slots: ["12:30 PM", "2:00 PM", "3:30 PM"] },
+  { label: "Evening", icon: Sunset, slots: ["5:00 PM", "6:00 PM", "7:00 PM"] },
+];
+const WHO_OPTS = [
+  { val: "Just me", icon: User },
+  { val: "With family", icon: Users },
+  { val: "With an advisor", icon: Briefcase },
+];
 
 function nextDays(n: number) {
-  const out: { label: string; sub: string; full: string }[] = [];
+  const out: { label: string; sub: string; full: string; date: Date }[] = [];
   const now = new Date();
   for (let i = 0; i < n; i++) {
     const d = new Date(now);
@@ -16,6 +25,7 @@ function nextDays(n: number) {
       label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en-IN", { weekday: "short" }),
       sub: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
       full: d.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" }),
+      date: d,
     });
   }
   return out;
@@ -75,17 +85,39 @@ function Done({ title, body, onClose }: { title: string; body: string; onClose: 
   );
 }
 
+function parseTime(slot: string) {
+  const m = slot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return { h: 11, min: 0 };
+  let h = Number(m[1]);
+  const min = Number(m[2]);
+  if (/pm/i.test(m[3]) && h !== 12) h += 12;
+  if (/am/i.test(m[3]) && h === 12) h = 0;
+  return { h, min };
+}
+function icsStamp(d: Date) {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`;
+}
+
+const MODES = [
+  { k: "In-person", icon: Footprints, title: "In-person visit", desc: "A rep shows you the flat & society · ~45 min", badge: "" },
+  { k: "Video", icon: Video, title: "Live video walkthrough", desc: "A rep walks you through on a video call · ~20 min", badge: "No travel" },
+];
+
 function BookingSheet({ propertyId, propertyName, locality, onClose }: { propertyId: string; propertyName: string; locality: string; onClose: () => void }) {
   const days = nextDays(7);
   const [dateIdx, setDateIdx] = useState(1);
-  const [slot, setSlot] = useState(SLOTS[1]);
+  const [slot, setSlot] = useState("10:00 AM");
   const [mode, setMode] = useState("In-person");
+  const [who, setWho] = useState("Just me");
+  const [note, setNote] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
+  const [ref, setRef] = useState<string | null>(null);
   const valid = name.trim().length > 1 && phone.replace(/\D/g, "").length >= 10;
+  const day = days[dateIdx];
 
   const submit = async () => {
     setError(""); setBusy(true);
@@ -93,10 +125,10 @@ function BookingSheet({ propertyId, propertyName, locality, onClose }: { propert
       const res = await fetch("/api/visits", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ propertyId, propertyName, date: days[dateIdx].full, slot, mode, buyerName: name.trim(), buyerPhone: phone.trim() }),
+        body: JSON.stringify({ propertyId, propertyName, date: day.full, slot, mode, who, note: note.trim(), buyerName: name.trim(), buyerPhone: phone.trim() }),
       });
       const data = await res.json();
-      if (res.ok) setDone(true);
+      if (res.ok) setRef(data.ref || "HX-VISIT");
       else setError(data.error || "Could not book.");
     } catch {
       setError("Something went wrong. Try again.");
@@ -105,10 +137,54 @@ function BookingSheet({ propertyId, propertyName, locality, onClose }: { propert
     }
   };
 
-  if (done)
+  const addToCalendar = () => {
+    const { h, min } = parseTime(slot);
+    const start = new Date(day.date);
+    start.setHours(h, min, 0, 0);
+    const end = new Date(start.getTime() + (mode === "Video" ? 20 : 45) * 60000);
+    const ics = [
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//HouseX//Visit//EN", "BEGIN:VEVENT",
+      `UID:${ref}@housex.ai`, `DTSTAMP:${icsStamp(new Date())}`, `DTSTART:${icsStamp(start)}`, `DTEND:${icsStamp(end)}`,
+      `SUMMARY:Site visit — ${propertyName}`, `LOCATION:${propertyName}, ${locality}`,
+      `DESCRIPTION:HouseX ${mode.toLowerCase()} visit. Booking ${ref}. Show this at the gate.`,
+      "BEGIN:VALARM", "TRIGGER:-PT2H", "ACTION:DISPLAY", "DESCRIPTION:Site visit in 2 hours", "END:VALARM",
+      "END:VEVENT", "END:VCALENDAR",
+    ].join("\r\n");
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `housex-visit-${ref}.ics`; a.click();
+    URL.revokeObjectURL(url);
+  };
+  const directions = `https://maps.google.com/maps?q=${encodeURIComponent(`${propertyName}, ${locality}`)}`;
+
+  if (ref)
     return (
-      <SheetShell title="Book a site visit" subtitle={`${propertyName} · ${locality}`} onClose={onClose}>
-        <Done title="Visit booked 🎉" body={`${propertyName} · ${days[dateIdx].full} · ${slot}. The developer will confirm shortly and reach you on ${phone}.`} onClose={onClose} />
+      <SheetShell title="Visit confirmed 🎉" subtitle={`${propertyName} · ${locality}`} onClose={onClose}>
+        {/* gate pass */}
+        <div className="mt-3 rounded-2xl bg-hx-ink text-white overflow-hidden">
+          <div className="px-4 pt-3.5 pb-2.5 flex items-center justify-between">
+            <span className="text-[10.5px] uppercase tracking-[0.14em] text-white/60 font-semibold">Site visit pass</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-hx-success/20 text-hx-success text-[10px] font-bold"><span className="w-1.5 h-1.5 rounded-full bg-hx-success" /> Confirmed</span>
+          </div>
+          <div className="px-4 pb-3">
+            <div className="text-[17px] font-extrabold tracking-tight">{propertyName}</div>
+            <div className="text-[12px] text-white/60">{locality}</div>
+          </div>
+          <div className="border-t border-dashed border-white/20 mx-4" />
+          <div className="px-4 py-3 grid grid-cols-2 gap-y-3 gap-x-2">
+            <Field label="Date" value={day.full} />
+            <Field label="Time" value={slot} />
+            <Field label="Mode" value={mode === "Video" ? "Video call" : "In-person"} />
+            <Field label="Booking ID" value={ref} />
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button onClick={addToCalendar} className="h-11 rounded-xl bg-white border border-hx-line inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold"><CalendarPlus className="w-4 h-4" /> Add to calendar</button>
+          <a href={directions} target="_blank" rel="noopener noreferrer" className="h-11 rounded-xl bg-white border border-hx-line inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold"><Navigation className="w-4 h-4" /> Directions</a>
+        </div>
+        <p className="mt-3 text-center text-[12px] text-hx-muted leading-relaxed">The developer will confirm the rep and reach you on <span className="font-semibold text-hx-ink">{phone}</span>. Show this pass at the gate.</p>
+        <button onClick={onClose} className="mt-3 w-full h-11 rounded-xl bg-hx-ink text-white text-[13.5px] font-semibold">Done</button>
       </SheetShell>
     );
 
@@ -124,22 +200,56 @@ function BookingSheet({ propertyId, propertyName, locality, onClose }: { propert
         ))}
       </div>
 
-      <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Time</div>
-      <div className="flex flex-wrap gap-2">
-        {SLOTS.map((s) => (
-          <button key={s} onClick={() => setSlot(s)} className={`px-3 h-9 rounded-lg border text-[13px] font-medium num ${slot === s ? "border-hx-red bg-hx-red/5 text-hx-red" : "border-hx-line bg-white text-hx-slate"}`}>{s}</button>
-        ))}
-      </div>
-
-      <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Visit type</div>
-      <div className="grid grid-cols-2 gap-2">
-        {[{ k: "In-person", icon: Building2 }, { k: "Video", icon: Video }].map((m) => {
-          const Icon = m.icon;
+      <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Choose a time</div>
+      <div className="space-y-3">
+        {TIME_GROUPS.map((g) => {
+          const Icon = g.icon;
           return (
-            <button key={m.k} onClick={() => setMode(m.k)} className={`h-11 rounded-xl border inline-flex items-center justify-center gap-2 text-[13.5px] font-medium ${mode === m.k ? "border-hx-red bg-hx-red/5 text-hx-red" : "border-hx-line bg-white text-hx-slate"}`}><Icon className="w-4 h-4" /> {m.k}</button>
+            <div key={g.label}>
+              <div className="text-[11px] font-semibold text-hx-slate mb-1.5 flex items-center gap-1"><Icon className="w-3.5 h-3.5 text-hx-warning" /> {g.label}</div>
+              <div className="grid grid-cols-3 gap-2">
+                {g.slots.map((s) => (
+                  <button key={s} onClick={() => setSlot(s)} className={`h-9 rounded-lg border text-[13px] font-medium num ${slot === s ? "border-hx-red bg-hx-red/5 text-hx-red" : "border-hx-line bg-white text-hx-slate"}`}>{s}</button>
+                ))}
+              </div>
+            </div>
           );
         })}
       </div>
+
+      <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">How would you like to visit?</div>
+      <div className="grid grid-cols-1 gap-2">
+        {MODES.map((m) => {
+          const Icon = m.icon;
+          const on = mode === m.k;
+          return (
+            <button key={m.k} onClick={() => setMode(m.k)} className={`w-full rounded-2xl border p-3.5 text-left flex items-center gap-3 ${on ? "border-hx-red bg-hx-red/5" : "border-hx-line bg-white"}`}>
+              <span className={`w-10 h-10 rounded-xl inline-flex items-center justify-center shrink-0 ${on ? "bg-hx-red/10 text-hx-red" : "bg-hx-ink/5 text-hx-slate"}`}><Icon className="w-5 h-5" /></span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-bold flex items-center gap-1.5">{m.title}{m.badge && <span className="inline-flex items-center px-1.5 py-[1px] rounded bg-hx-success/10 text-hx-success text-[9px] font-bold uppercase">{m.badge}</span>}</div>
+                <div className="text-[12px] text-hx-muted">{m.desc}</div>
+              </div>
+              {on && <Check className="w-5 h-5 text-hx-red shrink-0" />}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Who&apos;s coming?</div>
+      <div className="grid grid-cols-3 gap-2">
+        {WHO_OPTS.map((w) => {
+          const Icon = w.icon;
+          const on = who === w.val;
+          return (
+            <button key={w.val} onClick={() => setWho(w.val)} className={`rounded-xl border px-2 py-2.5 text-center ${on ? "border-hx-red bg-hx-red/5 text-hx-red" : "border-hx-line bg-white text-hx-slate"}`}>
+              <Icon className="w-4 h-4 mx-auto mb-1" />
+              <span className="text-[11.5px] font-semibold leading-tight">{w.val}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Anything for the rep to prepare? (optional)" className="mt-3 w-full px-3 py-2 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50 resize-none" />
 
       <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Your details — so the developer can confirm</div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -154,6 +264,15 @@ function BookingSheet({ propertyId, propertyName, locality, onClose }: { propert
       </button>
       <p className="mt-2 text-center text-[11px] text-hx-muted">Your number is shared only with this developer — never with brokers.</p>
     </SheetShell>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[9.5px] uppercase tracking-wider text-white/45">{label}</div>
+      <div className="text-[13px] font-bold num">{value}</div>
+    </div>
   );
 }
 
