@@ -24,6 +24,8 @@ HOW TO REPLY:
 - Keep it SHORT — 1 to 3 sentences for simple questions; a tight list only when comparing options. This is a mobile chat.
 - Currency: always "₹" with Indian formatting (₹52 L, ₹62,50,000). Never use "$".
 - Be specific using the inventory above: quote real floor-wise prices, facing, distance, RERA, amenities. If a buyer asks about a floor, look it up in the unit list and give the actual price.
+- If the buyer's request is vague (no budget, area, or BHK), ask ONE short clarifying question — the single most useful one — instead of dumping options.
+- ALWAYS move the conversation one step forward: after answering, suggest the natural next step (see a matching home, compare two options, check EMI, or book a site visit). One suggestion, not a menu.
 - For EMI, assume ~8.6% annual interest over 20 years unless told otherwise, and give the monthly figure.
 - If asked for a brochure or floor plan: if the property shows "Brochure available", say you'll share it and that the developer will send the full brochure + floor plans when the visit is booked. Don't invent a link.
 - MATCH THE BUYER'S CONFIG FIRST. If the buyer asks for a specific BHK (e.g. 1 BHK) and their exact locality has none, scan the ENTIRE inventory for that SAME BHK in any locality and offer the nearest ones — name the project, locality, price, and roughly how far it is from where they asked. Only suggest a different BHK as a secondary fallback, never as the first answer.
@@ -95,31 +97,60 @@ export async function POST(req: Request) {
 
   const inventory = (await getInventoryContext()) ?? FALLBACK_INVENTORY;
 
-  try {
-    const client = new Anthropic();
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 512,
-      system: buildSystemPrompt(inventory),
-      messages: clean,
-    });
-    const reply = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim();
-    const finalReply = reply || "Got it — want me to book a site visit or run an EMI estimate?";
+  // Stream the reply as NDJSON lines so the UI can render words as they arrive.
+  const client = new Anthropic();
+  const stream = client.messages.stream({
+    model: MODEL,
+    max_tokens: 1024,
+    system: [
+      {
+        type: "text",
+        text: buildSystemPrompt(inventory),
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: clean,
+  });
 
-    // attach visual cards for any real properties HouseX AI referenced
-    const properties = await getMentionedProperties(finalReply);
+  const encoder = new TextEncoder();
+  const cid = conversationId;
+  const lastUser = [...clean].reverse().find((m) => m.role === "user");
 
-    // persist the turn (best-effort)
-    const lastUser = [...clean].reverse().find((m) => m.role === "user");
-    await persistTurn(conversationId, lastUser?.content ?? "", finalReply);
+  const readable = new ReadableStream({
+    async start(controller) {
+      const emit = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      try {
+        for await (const event of stream) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            emit({ type: "delta", text: event.delta.text });
+          }
+        }
+        const final = await stream.finalMessage();
+        const reply = final.content
+          .filter((b): b is Anthropic.TextBlock => b.type === "text")
+          .map((b) => b.text)
+          .join("")
+          .trim() || "Got it — want me to book a site visit or run an EMI estimate?";
 
-    return Response.json({ reply: finalReply, properties });
-  } catch (err) {
-    console.error("HouseX AI API error:", err);
-    return Response.json({ reply: "I'm having a moment connecting — try again in a few seconds?" }, { status: 200 });
-  }
+        // attach visual cards for any real properties HouseX AI referenced
+        const properties = await getMentionedProperties(reply);
+        emit({ type: "done", properties });
+
+        // persist the turn (best-effort)
+        await persistTurn(cid, lastUser?.content ?? "", reply);
+      } catch (err) {
+        console.error("HouseX AI API error:", err);
+        emit({ type: "error", message: "I'm having a moment connecting — try again in a few seconds?" });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      "content-type": "application/x-ndjson; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
 }

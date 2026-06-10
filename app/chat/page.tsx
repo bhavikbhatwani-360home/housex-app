@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowUp, Plus, House, IndianRupee, Compass, CalendarCheck, MapPin, BadgeCheck, CalendarPlus, X, Check, Video, Building2, BadgePercent } from "lucide-react";
+import { Sparkles, ArrowUp, Plus, House, IndianRupee, Compass, CalendarCheck, MapPin, BadgeCheck, CalendarPlus, X, Check, Video, Building2, BadgePercent, Mic, RotateCcw } from "lucide-react";
 
 type PropertyCard = {
   id: string; name: string; developer: string; locality: string; city: string;
@@ -34,13 +34,25 @@ const SUGGESTIONS = [
   { icon: CalendarCheck, text: "Help me book a site visit" },
 ];
 
-function babaReplyFallback(t: string) {
-  const low = t.toLowerCase();
-  if (low.includes("site") || low.includes("visit"))
-    return `I can hold a slot at <span class="font-semibold">Greenvalley</span> this Saturday at 11 AM. Confirm?`;
-  if (low.includes("emi") || low.includes("loan"))
-    return `For ₹52 L at 8.6% over 20 yrs, EMI is roughly <span class="font-semibold">₹45,400/mo</span>. Want me to pre-check eligibility?`;
-  return `Got it. Want me to <span class="font-semibold">book a site visit</span> or <span class="font-semibold">run an EMI estimate</span>?`;
+// Minimal shape for the Web Speech API (not in TS lib by default)
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+function quickReplies(m?: Msg): string[] {
+  if (!m || m.role !== "baba") return [];
+  const t = htmlToText(m.html).toLowerCase();
+  if (t.trim().endsWith("?")) return []; // the AI asked a question — let the buyer answer it
+  if (m.properties && m.properties.length > 0) return ["Book a site visit", "What's the EMI for this?", "Show cheaper options"];
+  if (t.includes("emi")) return ["Show me matching homes", "Book a site visit"];
+  return ["Show me matching homes", "What's the EMI?"];
 }
 
 function htmlToText(html: string) {
@@ -145,6 +157,18 @@ export default function Chat() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(false);
   const [bookingFor, setBookingFor] = useState<PropertyCard | null>(null);
+  const [failedMsg, setFailedMsg] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  // Voice input availability (Chrome / Android — the main HouseX audience)
+  const voiceOk = useSyncExternalStore(
+    () => () => {},
+    () => {
+      const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+      return Boolean(w.SpeechRecognition || w.webkitSpeechRecognition);
+    },
+    () => false
+  );
+  const recRef = useRef<SpeechRecognitionLike | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const idRef = useRef(0);
@@ -163,9 +187,15 @@ export default function Chat() {
     return convIdRef.current;
   };
 
+  // Auto-scroll only when the user is already near the bottom — don't yank
+  // them down while they're re-reading an earlier message.
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [messages, typing]);
+
 
   // Resume the conversation + receive developer replies (poll every 5s)
   useEffect(() => {
@@ -244,15 +274,21 @@ export default function Chat() {
     el.style.height = Math.min(el.scrollHeight, 200) + "px";
   };
 
-  const send = async (raw: string) => {
+  const send = async (raw: string, opts?: { retry?: boolean }) => {
     const txt = raw.trim();
     if (!txt || typing) return;
+    setFailedMsg(null);
+    if (listening) recRef.current?.stop();
     const history: { role: "user" | "assistant"; content: string }[] = [];
     for (const m of messages) {
       if (m.role === "user") history.push({ role: "user", content: m.text });
       else if (m.role === "baba" || m.role === "developer") history.push({ role: "assistant", content: htmlToText(m.html) });
     }
-    setMessages((m) => [...m, { id: ++idRef.current, role: "user", text: txt }]);
+    if (!opts?.retry) {
+      // on retry the failed user message is already in the conversation
+      setMessages((m) => [...m, { id: ++idRef.current, role: "user", text: txt }]);
+      history.push({ role: "user", content: txt });
+    }
     setInput("");
     requestAnimationFrame(autoGrow);
     setTyping(true);
@@ -260,15 +296,89 @@ export default function Chat() {
       const res = await fetch("/api/baba", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId: ensureConvId(), messages: [...history, { role: "user", content: txt }] }),
+        body: JSON.stringify({ conversationId: ensureConvId(), messages: history }),
       });
-      const data = await res.json();
+      if (!res.ok || !res.body) throw new Error("bad response");
+
+      // Non-streamed replies (rate limit, missing key, validation) come back as JSON.
+      if ((res.headers.get("content-type") || "").includes("application/json")) {
+        const data = await res.json();
+        setTyping(false);
+        setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: formatReply(data.reply || ""), properties: data.properties }]);
+        return;
+      }
+
+      // NDJSON stream — render the reply word-by-word as it's generated.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let acc = "";
+      let liveId: number | null = null;
+      const apply = (html: string, properties?: PropertyCard[]) => {
+        if (liveId === null) {
+          liveId = ++idRef.current;
+          const id = liveId;
+          setTyping(false);
+          setMessages((m) => [...m, { id, role: "baba", html, properties }]);
+        } else {
+          const id = liveId;
+          setMessages((m) => m.map((x) => (x.id === id && x.role === "baba" ? { ...x, html, properties: properties ?? x.properties } : x)));
+        }
+      };
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const evt = JSON.parse(line);
+          if (evt.type === "delta") {
+            acc += evt.text;
+            apply(formatReply(acc));
+          } else if (evt.type === "done") {
+            apply(formatReply(acc), evt.properties);
+          } else if (evt.type === "error") {
+            throw new Error(evt.message);
+          }
+        }
+      }
       setTyping(false);
-      setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: formatReply(data.reply || ""), properties: data.properties }]);
+      if (liveId === null) throw new Error("empty reply");
     } catch {
       setTyping(false);
-      setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: babaReplyFallback(txt) }]);
+      setFailedMsg(txt);
+      setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: `I couldn't reach the server just now — check your connection and tap <span class="font-semibold">Retry</span> below.` }]);
     }
+  };
+
+  const toggleMic = () => {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const w = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    };
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = "en-IN";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (e) => {
+      let t = "";
+      for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+      setInput(t);
+      requestAnimationFrame(autoGrow);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
   };
 
   const newChat = () => {
@@ -444,6 +554,29 @@ export default function Chat() {
                 </div>
               </div>
             )}
+            {failedMsg && !typing && (
+              <div className="flex pl-10">
+                <button
+                  onClick={() => send(failedMsg, { retry: true })}
+                  className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-hx-red/40 text-hx-red text-[13px] font-medium hover:bg-hx-red/5 transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Retry
+                </button>
+              </div>
+            )}
+            {!typing && !failedMsg && quickReplies(messages[messages.length - 1]).length > 0 && (
+              <div className="flex flex-wrap gap-2 pl-10">
+                {quickReplies(messages[messages.length - 1]).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => send(q)}
+                    className="h-8 px-3.5 rounded-full border border-hx-line bg-white text-hx-slate text-[12.5px] font-medium hover:border-hx-red/40 hover:text-hx-red transition-colors"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -463,9 +596,18 @@ export default function Chat() {
                 }
               }}
               rows={1}
-              placeholder="Message HouseX AI…"
+              placeholder={listening ? "Listening… speak now" : "Message HouseX AI…"}
               className="flex-1 resize-none bg-transparent outline-none text-[15px] leading-relaxed py-1.5 px-1.5 placeholder:text-hx-muted max-h-[200px]"
             />
+            {voiceOk && (
+              <button
+                onClick={toggleMic}
+                aria-label={listening ? "Stop listening" : "Speak your message"}
+                className={`w-9 h-9 rounded-full inline-flex items-center justify-center shrink-0 transition-colors ${listening ? "bg-hx-red text-white animate-pulse" : "text-hx-slate hover:bg-hx-bg"}`}
+              >
+                <Mic className="w-[18px] h-[18px]" />
+              </button>
+            )}
             <button
               onClick={() => send(input)}
               disabled={!input.trim() || typing}
