@@ -1,4 +1,4 @@
-import { Building2, AlertCircle, Plus } from "lucide-react";
+import { Building2, AlertCircle, Plus, Upload, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import StatusControl from "./StatusControl";
@@ -33,9 +33,14 @@ export default async function PropertiesPage() {
             </span>
           )}
         </h1>
-        <Link href="/admin/properties/new" className="ml-auto inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
-          <Plus className="w-4 h-4" /> Add property
-        </Link>
+        <div className="ml-auto flex items-center gap-2">
+          <Link href="/admin/properties/import" className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-hx-line text-hx-slate text-[13px] font-semibold hover:bg-hx-bg">
+            <Upload className="w-4 h-4" /> Import from RERA
+          </Link>
+          <Link href="/admin/properties/new" className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
+            <Plus className="w-4 h-4" /> Add property
+          </Link>
+        </div>
       </header>
 
       <div className="p-6">
@@ -62,23 +67,36 @@ export default async function PropertiesPage() {
                   <StatusControl id={p.id} status={p.status} />
                 </div>
                 <div className="mt-2 flex items-center gap-3 text-[12.5px] text-hx-slate">
-                  <span className="num font-semibold">₹{p.priceMin}–{p.priceMax} L</span>
-                  <span className="text-hx-muted">·</span>
-                  <span>{p.bhk}</span>
-                  <span className="text-hx-muted">·</span>
-                  <span>{p.facing}</span>
+                  {p.priceMin > 0 ? (
+                    <>
+                      <span className="num font-semibold">₹{p.priceMin}–{p.priceMax} L</span>
+                      <span className="text-hx-muted">·</span>
+                      <span>{p.bhk || "—"}</span>
+                      <span className="text-hx-muted">·</span>
+                      <span>{p.facing}</span>
+                    </>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[12px] text-hx-warning font-medium">
+                      <Sparkles className="w-3.5 h-3.5" /> Skeleton — needs brochure &amp; price
+                    </span>
+                  )}
                 </div>
-                <div className="mt-3 pt-3 border-t border-hx-line">
-                  <div className="text-[10.5px] uppercase tracking-wider text-hx-muted mb-1.5">
-                    {p.units.length} units · RERA {p.reraId}
+                <div className="mt-3 pt-3 border-t border-hx-line flex items-end justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[10.5px] uppercase tracking-wider text-hx-muted mb-1.5">
+                      {p.units.length} units · RERA {p.reraId || "—"}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {p.units.slice(0, 6).map((u) => (
+                        <span key={u.id} className="num text-[11px] px-2 py-0.5 rounded-md bg-hx-bg border border-hx-line">
+                          F{u.floor} · ₹{u.priceLakh}L
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {p.units.slice(0, 6).map((u) => (
-                      <span key={u.id} className="num text-[11px] px-2 py-0.5 rounded-md bg-hx-bg border border-hx-line">
-                        F{u.floor} · ₹{u.priceLakh}L
-                      </span>
-                    ))}
-                  </div>
+                  <Link href={`/admin/properties/${p.id}/edit`} className="shrink-0 inline-flex items-center gap-1 h-7 px-2.5 rounded-lg border border-hx-line text-[12px] font-semibold text-hx-slate hover:bg-hx-bg hover:text-hx-red">
+                    {p.priceMin > 0 ? "Edit" : "Enrich"}
+                  </Link>
                 </div>
               </div>
             ))}

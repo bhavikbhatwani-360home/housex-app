@@ -7,21 +7,40 @@ import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, AlertCir
 
 type UnitRow = { floor: string; priceLakh: string; facing: string; carpetSqft: string };
 type DevOption = { id: string; company: string };
+type FormState = {
+  name: string; developer: string; city: string; locality: string; bhk: string; facing: string;
+  carpetSqft: string; distanceToStationM: string; reraId: string; status: string; amenities: string; brochureUrl: string;
+  videoUrl: string; possession: string; description: string; images: string;
+  totalTowers: string; totalUnits: string; projectArea: string; totalFloors: string; floorPlans: string; nearby: string;
+};
 
 const FACINGS = ["East", "West", "North", "South"];
 const BHKS = ["1 BHK", "2 BHK", "3 BHK", "3+ BHK"];
 const STATUSES = ["Live", "Pending", "Draft"];
 
-export default function NewPropertyForm({ developers }: { developers: DevOption[] }) {
+const EMPTY_FORM: FormState = {
+  name: "", developer: "", city: "Mumbai (MMR)", locality: "", bhk: "2 BHK", facing: "East",
+  carpetSqft: "", distanceToStationM: "", reraId: "", status: "Live", amenities: "", brochureUrl: "",
+  videoUrl: "", possession: "", description: "", images: "",
+  totalTowers: "", totalUnits: "", projectArea: "", totalFloors: "", floorPlans: "", nearby: "",
+};
+
+export default function NewPropertyForm({
+  developers, initial, initialUnits, propertyId, initialDeveloperId,
+}: {
+  developers: DevOption[];
+  initial?: Partial<FormState>;
+  initialUnits?: UnitRow[];
+  propertyId?: string;
+  initialDeveloperId?: string;
+}) {
   const router = useRouter();
-  const [developerId, setDeveloperId] = useState(developers[0]?.id ?? "");
-  const [f, setF] = useState({
-    name: "", developer: "", city: "Mumbai (MMR)", locality: "", bhk: "2 BHK", facing: "East",
-    carpetSqft: "", distanceToStationM: "", reraId: "", status: "Live", amenities: "", brochureUrl: "",
-    videoUrl: "", possession: "", description: "", images: "",
-    totalTowers: "", totalUnits: "", projectArea: "", totalFloors: "", floorPlans: "", nearby: "",
-  });
-  const [units, setUnits] = useState<UnitRow[]>([{ floor: "", priceLakh: "", facing: "East", carpetSqft: "" }]);
+  const isEdit = Boolean(propertyId);
+  const [developerId, setDeveloperId] = useState(initialDeveloperId ?? developers[0]?.id ?? "");
+  const [f, setF] = useState<FormState>({ ...EMPTY_FORM, ...initial });
+  const [units, setUnits] = useState<UnitRow[]>(
+    initialUnits && initialUnits.length ? initialUnits : [{ floor: "", priceLakh: "", facing: "East", carpetSqft: "" }]
+  );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -124,8 +143,8 @@ export default function NewPropertyForm({ developers }: { developers: DevOption[
     setError("");
     setBusy(true);
     try {
-      const res = await fetch("/api/admin/properties", {
-        method: "POST",
+      const res = await fetch(isEdit ? `/api/admin/properties/${propertyId}` : "/api/admin/properties", {
+        method: isEdit ? "PUT" : "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...f,
@@ -160,9 +179,9 @@ export default function NewPropertyForm({ developers }: { developers: DevOption[
         <Link href="/admin/properties" className="w-8 h-8 rounded-lg border border-hx-line inline-flex items-center justify-center text-hx-slate hover:bg-hx-bg">
           <ArrowLeft className="w-4 h-4" />
         </Link>
-        <h1 className="text-[16px] font-semibold tracking-tight">Add property</h1>
+        <h1 className="text-[16px] font-semibold tracking-tight">{isEdit ? "Edit property" : "Add property"}</h1>
         <button form="adminpropform" disabled={busy} className="ml-auto h-9 px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-40">
-          {busy ? "Saving…" : "Publish"}
+          {busy ? "Saving…" : isEdit ? "Save changes" : "Publish"}
         </button>
       </header>
 
