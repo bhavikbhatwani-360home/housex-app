@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { notifyDeveloper } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -17,9 +18,14 @@ export async function POST(req: Request) {
   const date = s(body.date);
   const slot = s(body.slot);
   const mode = s(body.mode) || "In-person";
+  const buyerName = s(body.buyerName);
+  const buyerPhone = s(body.buyerPhone);
 
   if (!propertyName || !date || !slot) {
     return Response.json({ error: "Missing visit details." }, { status: 400 });
+  }
+  if (buyerName.length < 2 || buyerPhone.replace(/\D/g, "").length < 10) {
+    return Response.json({ error: "Enter your name and a valid phone number." }, { status: 400 });
   }
 
   try {
@@ -53,14 +59,29 @@ export async function POST(req: Request) {
         data: {
           interestedProperty: propertyName,
           status: "Visit booked",
+          name: buyerName,
+          phone: buyerPhone,
           ...(ownerDeveloperId ? { developerId: ownerDeveloperId } : {}),
         },
       });
     }
 
     await prisma.visit.create({
-      data: { propertyId: propertyId ?? null, propertyName, leadId: leadId ?? null, date, slot, mode },
+      data: { propertyId: propertyId ?? null, propertyName, leadId: leadId ?? null, date, slot, mode, buyerName, buyerPhone },
     });
+
+    // alert the developer's team (best-effort; no-op until RESEND_API_KEY is set)
+    if (ownerDeveloperId) {
+      await notifyDeveloper(
+        ownerDeveloperId,
+        `New site visit — ${propertyName}`,
+        "🎉 New site visit booked",
+        `<p><strong>${buyerName}</strong> (${buyerPhone}) booked a <strong>${mode.toLowerCase()}</strong> visit to <strong>${propertyName}</strong>.</p>
+         <p><strong>${date} · ${slot}</strong></p>
+         <p>Respond quickly — fast replies convert far better.</p>`,
+        "/developer/visits"
+      );
+    }
 
     return Response.json({ ok: true, summary: `${propertyName} · ${date} · ${slot} · ${mode}` });
   } catch (err) {

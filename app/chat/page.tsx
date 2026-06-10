@@ -307,7 +307,7 @@ export default function Chat() {
     setMessages((cur) => [...cur, { id: ++idRef.current, role: "baba", html: follow }]);
   };
 
-  const confirmVisit = async (date: string, slot: string, mode: string) => {
+  const confirmVisit = async (date: string, slot: string, mode: string, buyerName: string, buyerPhone: string) => {
     const p = bookingFor;
     if (!p) return;
     setBookingFor(null);
@@ -315,7 +315,7 @@ export default function Chat() {
       const res = await fetch("/api/visits", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId: ensureConvId(), propertyId: p.id, propertyName: p.name, date, slot, mode }),
+        body: JSON.stringify({ conversationId: ensureConvId(), propertyId: p.id, propertyName: p.name, date, slot, mode, buyerName, buyerPhone }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -508,11 +508,14 @@ function nextDays(n: number) {
   return out;
 }
 
-function BookingSheet({ property, onClose, onConfirm }: { property: PropertyCard; onClose: () => void; onConfirm: (date: string, slot: string, mode: string) => void }) {
+function BookingSheet({ property, onClose, onConfirm }: { property: PropertyCard; onClose: () => void; onConfirm: (date: string, slot: string, mode: string, buyerName: string, buyerPhone: string) => void }) {
   const days = nextDays(7);
   const [dateIdx, setDateIdx] = useState(1);
   const [slot, setSlot] = useState(SLOTS[1]);
   const [mode, setMode] = useState("In-person");
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
+  const valid = buyerName.trim().length > 1 && buyerPhone.replace(/\D/g, "").length >= 10;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -560,12 +563,20 @@ function BookingSheet({ property, onClose, onConfirm }: { property: PropertyCard
           })}
         </div>
 
+        <div className="mt-4 text-[11px] uppercase tracking-wider text-hx-muted mb-2">Your details — so the developer can confirm</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="Your name" className="h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50" />
+          <input value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} placeholder="Phone number" inputMode="tel" className="h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50" />
+        </div>
+
         <button
-          onClick={() => onConfirm(days[dateIdx].full, slot, mode)}
-          className="mt-5 w-full h-12 rounded-2xl bg-hx-red text-white text-[15px] font-semibold shadow-hx-red inline-flex items-center justify-center gap-2"
+          onClick={() => valid && onConfirm(days[dateIdx].full, slot, mode, buyerName.trim(), buyerPhone.trim())}
+          disabled={!valid}
+          className="mt-4 w-full h-12 rounded-2xl bg-hx-red text-white text-[15px] font-semibold shadow-hx-red inline-flex items-center justify-center gap-2 disabled:opacity-40"
         >
           <Check className="w-5 h-5" /> Confirm visit
         </button>
+        <p className="mt-2 text-center text-[11px] text-hx-muted">Your number is shared only with this developer — never with brokers.</p>
       </div>
     </div>
   );

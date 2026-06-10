@@ -12,13 +12,13 @@ export default async function DevVisits() {
   const dev = await getDeveloper();
   if (!dev) return null;
 
-  let visits: { id: string; propertyName: string; date: string; slot: string; mode: string; status: string; createdAt: Date }[] = [];
+  let visits: { id: string; propertyName: string; date: string; slot: string; mode: string; status: string; createdAt: Date; buyerName: string | null; buyerPhone: string | null }[] = [];
   try {
     visits = await prisma.visit.findMany({
       where: { property: { developerId: dev.id } },
       orderBy: { createdAt: "desc" },
       take: 200,
-      select: { id: true, propertyName: true, date: true, slot: true, mode: true, status: true, createdAt: true },
+      select: { id: true, propertyName: true, date: true, slot: true, mode: true, status: true, createdAt: true, buyerName: true, buyerPhone: true },
     });
   } catch {}
 
@@ -42,6 +42,7 @@ export default async function DevVisits() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-hx-line text-[11px] uppercase tracking-wider text-hx-muted">
+                  <th className="px-4 py-3 font-medium">Buyer</th>
                   <th className="px-4 py-3 font-medium">Property</th>
                   <th className="px-4 py-3 font-medium">When</th>
                   <th className="px-4 py-3 font-medium">Type</th>
@@ -52,7 +53,8 @@ export default async function DevVisits() {
               <tbody>
                 {visits.map((v) => (
                   <tr key={v.id} className="border-b border-hx-line last:border-0 hover:bg-hx-bg/60">
-                    <td className="px-4 py-3 text-[13.5px] font-medium">{v.propertyName}</td>
+                    <td className="px-4 py-3"><div className="text-[13.5px] font-medium">{v.buyerName || "—"}</div><div className="num text-[12px] text-hx-muted">{v.buyerPhone || ""}</div></td>
+                    <td className="px-4 py-3 text-[13px] text-hx-slate">{v.propertyName}</td>
                     <td className="px-4 py-3 text-[13px] text-hx-slate num">{v.date} · {v.slot}</td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5 text-[12.5px] text-hx-slate">

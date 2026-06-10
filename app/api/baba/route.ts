@@ -35,7 +35,38 @@ HOW TO REPLY:
 
 type InMsg = { role: "user" | "assistant"; content: string };
 
+// ── simple in-memory rate limit (per serverless instance) ──
+// Protects the Anthropic spend from abuse: 15 msgs / 5 min per IP, 300 / hour globally.
+const ipHits = new Map<string, number[]>();
+let globalHits: number[] = [];
+const IP_LIMIT = 15, IP_WINDOW = 5 * 60_000;
+const GLOBAL_LIMIT = 300, GLOBAL_WINDOW = 60 * 60_000;
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  globalHits = globalHits.filter((t) => now - t < GLOBAL_WINDOW);
+  if (globalHits.length >= GLOBAL_LIMIT) return true;
+  const hits = (ipHits.get(ip) || []).filter((t) => now - t < IP_WINDOW);
+  if (hits.length >= IP_LIMIT) {
+    ipHits.set(ip, hits);
+    return true;
+  }
+  hits.push(now);
+  ipHits.set(ip, hits);
+  globalHits.push(now);
+  if (ipHits.size > 5000) ipHits.clear(); // keep memory bounded
+  return false;
+}
+
 export async function POST(req: Request) {
+  const ip = (req.headers.get("x-forwarded-for") || "unknown").split(",")[0].trim();
+  if (rateLimited(ip)) {
+    return Response.json(
+      { reply: "I'm getting a lot of messages right now 🙏 Give me a minute and try again." },
+      { status: 200 }
+    );
+  }
+
   let messages: InMsg[] = [];
   let conversationId: string | undefined;
   try {

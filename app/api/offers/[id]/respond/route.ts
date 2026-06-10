@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { notifyDeveloper } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (offer.leadId) {
       const leadStatus = action === "accept" ? "Offer accepted" : action === "counter" ? "Countered" : "Offer declined";
       await prisma.lead.update({ where: { id: offer.leadId }, data: { status: leadStatus } }).catch(() => {});
+    }
+
+    // alert the developer's team (no-op until RESEND_API_KEY is set)
+    if (offer.developerId) {
+      const headline =
+        action === "accept" ? `🎉 Offer ACCEPTED — ${offer.propertyName}`
+        : action === "counter" ? `Buyer countered ₹${Math.trunc(counterPriceLakh)} L — ${offer.propertyName}`
+        : `Offer declined — ${offer.propertyName}`;
+      const detail =
+        action === "accept"
+          ? `<p>The buyer <strong>accepted</strong> your offer of <strong>₹${offer.offerPriceLakh} L</strong> on <strong>${offer.propertyName}</strong>. Reach out now to close.</p>`
+          : action === "counter"
+          ? `<p>The buyer countered your ₹${offer.offerPriceLakh} L offer with <strong>₹${Math.trunc(counterPriceLakh)} L</strong> on <strong>${offer.propertyName}</strong>. Reply quickly to keep the deal warm.</p>`
+          : `<p>The buyer declined your ₹${offer.offerPriceLakh} L offer on <strong>${offer.propertyName}</strong>. You can send a revised offer from the lead.</p>`;
+      await notifyDeveloper(offer.developerId, headline, headline, detail, "/developer/offers");
     }
 
     return Response.json({ ok: true, status });

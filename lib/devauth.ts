@@ -44,6 +44,32 @@ async function getMemberId(): Promise<string | null> {
 }
 
 /** The logged-in team member (login identity), including their org. */
+/**
+ * Stateless password-reset token: id.expiry.hmac(id+expiry+currentHash).
+ * Expires after 1 hour and is invalidated automatically once the password changes.
+ */
+export function makeResetToken(memberId: string, passwordHash: string): string {
+  const exp = Date.now() + 60 * 60_000;
+  const sig = createHmac("sha256", secret()).update(`reset:${memberId}:${exp}:${passwordHash}`).digest("hex");
+  return `${memberId}.${exp}.${sig}`;
+}
+
+export async function verifyResetToken(token: string): Promise<{ id: string } | null> {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [id, expStr, sig] = parts;
+  const exp = Number(expStr);
+  if (!Number.isFinite(exp) || Date.now() > exp) return null;
+  try {
+    const member = await prisma.teamMember.findUnique({ where: { id }, select: { passwordHash: true } });
+    if (!member) return null;
+    const expect = createHmac("sha256", secret()).update(`reset:${id}:${exp}:${member.passwordHash}`).digest("hex");
+    return sig === expect ? { id } : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getMember() {
   const id = await getMemberId();
   if (!id) return null;

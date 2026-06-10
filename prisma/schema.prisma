@@ -128,6 +128,8 @@ model Visit {
   date         String // e.g. "Sat, 14 Jun"
   slot         String // e.g. "11:00 AM"
   mode         String // "In-person" | "Video"
+  buyerName    String?
+  buyerPhone   String?
   status       String    @default("Requested")
   createdAt    DateTime  @default(now())
 }

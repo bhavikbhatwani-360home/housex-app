@@ -52,6 +52,8 @@ export default function DeveloperLogin() {
         </button>
         <p className="mt-4 text-[13px] text-hx-muted text-center">
           New here? <Link href="/developer/signup" className="text-hx-red font-semibold">Create an account</Link>
+          <span className="mx-1.5">·</span>
+          <Link href="/developer/forgot-password" className="text-hx-slate underline-offset-2 hover:underline">Forgot password?</Link>
         </p>
       </form>
     </div>
