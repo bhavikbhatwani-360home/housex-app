@@ -95,17 +95,33 @@ export async function POST(req: Request) {
   });
 
   const incomingIds = batch.map((r) => r.reraId).filter(Boolean);
-  let existingIds = new Set<string>();
+  let existingByRera = new Map<string, { id: string; priceMin: number; status: string }>();
   try {
-    const found = await prisma.property.findMany({ where: { reraId: { in: incomingIds } }, select: { reraId: true } });
-    existingIds = new Set(found.map((p) => p.reraId));
+    const found = await prisma.property.findMany({
+      where: { reraId: { in: incomingIds } },
+      select: { id: true, reraId: true, priceMin: true, status: true },
+    });
+    existingByRera = new Map(found.map((p) => [p.reraId, { id: p.id, priceMin: p.priceMin, status: p.status }]));
   } catch {
     return Response.json({ error: "Could not reach the database." }, { status: 500 });
   }
 
-  const toCreate = batch.filter((r) => !(r.reraId && existingIds.has(r.reraId)));
-  const skipped = clean.length - toCreate.length;
-  const withPrice = toCreate.filter((r) => r.priceMin > 0).length;
+  // Split into new projects vs. existing ones to enrich. We only update an
+  // existing listing if it's still a price-less Pending skeleton AND this row
+  // brings a price — so a re-import fills in earlier imports without ever
+  // clobbering a listing a manager has already priced, enriched, or approved.
+  const toCreate: typeof batch = [];
+  const toUpdate: { id: string; r: (typeof batch)[number] }[] = [];
+  for (const r of batch) {
+    const ex = r.reraId ? existingByRera.get(r.reraId) : undefined;
+    if (!ex) toCreate.push(r);
+    else if (ex.priceMin === 0 && ex.status === "Pending" && r.priceMin > 0) toUpdate.push({ id: ex.id, r });
+    // else: leave the existing listing untouched
+  }
+  const created = toCreate.length;
+  const updated = toUpdate.length;
+  const skipped = clean.length - created - updated;
+  const withPrice = toCreate.filter((r) => r.priceMin > 0).length + updated;
 
   try {
     if (toCreate.length) {
@@ -129,7 +145,26 @@ export async function POST(req: Request) {
         })),
       });
     }
-    return Response.json({ ok: true, created: toCreate.length, skipped, withPrice, total: clean.length });
+    if (toUpdate.length) {
+      await prisma.$transaction(
+        toUpdate.map(({ id, r }) =>
+          prisma.property.update({
+            where: { id },
+            data: {
+              priceMin: r.priceMin,
+              priceMax: r.priceMax,
+              ...(BHKS.includes(r.bhk) ? { bhk: r.bhk } : {}),
+              ...(r.carpetSqft > 0 ? { carpetSqft: r.carpetSqft } : {}),
+              ...(r.totalTowers > 0 ? { totalTowers: r.totalTowers } : {}),
+              ...(r.totalFloors ? { totalFloors: r.totalFloors } : {}),
+              ...(r.possession ? { possession: r.possession } : {}),
+              ...(r.locality ? { locality: r.locality } : {}),
+            },
+          })
+        )
+      );
+    }
+    return Response.json({ ok: true, created, updated, skipped, withPrice, total: clean.length });
   } catch (err) {
     console.error("RERA import error:", err);
     return Response.json({ error: "Could not save the imported projects." }, { status: 500 });

@@ -71,7 +71,7 @@ export default function ImportTool() {
   const [map, setMap] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ created: number; skipped: number; withPrice: number } | null>(null);
+  const [result, setResult] = useState<{ created: number; updated: number; skipped: number; withPrice: number } | null>(null);
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
@@ -111,7 +111,7 @@ export default function ImportTool() {
       });
       const data = await res.json();
       if (res.ok) {
-        setResult({ created: data.created, skipped: data.skipped, withPrice: data.withPrice ?? 0 });
+        setResult({ created: data.created, updated: data.updated ?? 0, skipped: data.skipped, withPrice: data.withPrice ?? 0 });
         router.refresh();
       } else setError(data.error || "Import failed.");
     } catch {
@@ -217,12 +217,13 @@ export default function ImportTool() {
         {result && (
           <div className="rounded-lg border border-hx-success/30 bg-hx-success/5 p-4">
             <div className="flex items-center gap-2 text-[14px] font-semibold text-hx-success">
-              <CheckCircle2 className="w-4.5 h-4.5" /> Imported {result.created} projects
+              <CheckCircle2 className="w-4.5 h-4.5" /> {result.created} added{result.updated > 0 ? `, ${result.updated} updated with price` : ""}
             </div>
             <p className="text-[12.5px] text-hx-slate mt-1">
-              {result.withPrice > 0 && `${result.withPrice} came in with a price. `}
-              {result.skipped > 0 && `${result.skipped} skipped (already in the system). `}
-              All are <strong>Pending</strong> — verify the price (and add brochure details), then approve to go Live.
+              {result.withPrice > 0 && `${result.withPrice} now have a price. `}
+              {result.updated > 0 && `${result.updated} projects you'd imported earlier just got their price filled in. `}
+              {result.skipped > 0 && `${result.skipped} left unchanged (already priced or enriched). `}
+              They&apos;re <strong>Pending</strong> — verify the price (and add brochure details), then approve to go Live.
             </p>
             <Link href="/admin/properties" className="mt-3 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-hx-ink text-white text-[13px] font-semibold">
               Go to properties
