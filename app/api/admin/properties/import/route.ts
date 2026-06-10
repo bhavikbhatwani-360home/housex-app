@@ -4,10 +4,40 @@ import { prisma } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Bulk-create RERA "skeleton" listings from a CSV the team pulled for one area.
-// Each row becomes a Pending property with placeholder price (0) — the brochure
-// agent + manager enrich and approve it later. Deduped by RERA registration no.
-type RowIn = { name?: unknown; developer?: unknown; city?: unknown; locality?: unknown; reraId?: unknown; possession?: unknown };
+// Bulk-create listings from a CSV the team pulled for one area. Skeleton fields
+// (name/developer/locality/RERA) always; rich fields (price/BHK/carpet/towers/
+// floors) when the CSV has them. Everything imports as Pending — a manager
+// verifies the price and approves before it goes Live. Deduped by RERA number.
+type RowIn = Record<string, unknown>;
+
+const BHKS = ["1 BHK", "2 BHK", "3 BHK", "3+ BHK"];
+
+// "₹33.99 Lacs" -> 34 ; "₹1.10 Cr" -> 110 ; "1.6 crore" -> 160 ; "" -> 0
+function parseMoneyLakh(v: unknown): number {
+  const str = String(v ?? "").toLowerCase();
+  const m = str.match(/([\d.,]+)/);
+  if (!m) return 0;
+  const num = parseFloat(m[1].replace(/,/g, ""));
+  if (!Number.isFinite(num)) return 0;
+  const isCr = /cr|crore/.test(str);
+  return Math.round(isCr ? num * 100 : num);
+}
+
+// "296-770 sqft" -> 296 ; "720" -> 720 ; "G+23" -> 23
+function firstInt(v: unknown): number {
+  const m = String(v ?? "").match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+// "1 RK, 1 BHK, 2 BHK" -> "2 BHK" (a representative config; manager can adjust)
+function normalizeBhk(v: unknown): string {
+  const str = String(v ?? "");
+  if (/3\s*\+|4\s*BHK|3\.5/.test(str)) return "3+ BHK";
+  if (/2\s*BHK/.test(str)) return "2 BHK";
+  if (/1\s*BHK/.test(str)) return "1 BHK";
+  if (/3\s*BHK/.test(str)) return "3 BHK";
+  return "";
+}
 
 export async function POST(req: Request) {
   if (!(await isAdmin())) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,44 +54,51 @@ export async function POST(req: Request) {
 
   const s = (v: unknown) => (typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "");
 
-  // Clean + require a name; keep the RERA id for dedupe.
   const clean = rows
-    .map((r) => ({
-      name: s(r.name),
-      developer: s(r.developer) || "Unknown developer",
-      city: s(r.city) || "Mumbai (MMR)",
-      locality: s(r.locality),
-      reraId: s(r.reraId),
-      possession: s(r.possession),
-    }))
+    .map((r) => {
+      const priceMin = parseMoneyLakh(r.priceMin);
+      const priceMax = parseMoneyLakh(r.priceMax) || priceMin;
+      return {
+        name: s(r.name),
+        developer: s(r.developer) || "Unknown developer",
+        city: s(r.city) || "Mumbai (MMR)",
+        locality: s(r.locality),
+        reraId: s(r.reraId),
+        possession: s(r.possession),
+        priceMin,
+        priceMax: Math.max(priceMin, priceMax),
+        bhk: normalizeBhk(r.bhk),
+        carpetSqft: firstInt(r.carpetSqft),
+        totalTowers: firstInt(r.towers),
+        totalFloors: s(r.floors),
+      };
+    })
     .filter((r) => r.name);
 
   if (clean.length === 0)
     return Response.json({ error: "No usable rows — make sure a Project name column is mapped." }, { status: 400 });
 
-  // Dedupe within this batch and against what's already in the DB (by RERA id).
+  // Dedupe within the batch and against the DB (by RERA id).
   const seen = new Set<string>();
-  const batchDeduped = clean.filter((r) => {
-    if (!r.reraId) return true; // no id → can't dedupe, allow it
+  const batch = clean.filter((r) => {
+    if (!r.reraId) return true;
     if (seen.has(r.reraId)) return false;
     seen.add(r.reraId);
     return true;
   });
 
-  const incomingIds = batchDeduped.map((r) => r.reraId).filter(Boolean);
+  const incomingIds = batch.map((r) => r.reraId).filter(Boolean);
   let existingIds = new Set<string>();
   try {
-    const found = await prisma.property.findMany({
-      where: { reraId: { in: incomingIds } },
-      select: { reraId: true },
-    });
+    const found = await prisma.property.findMany({ where: { reraId: { in: incomingIds } }, select: { reraId: true } });
     existingIds = new Set(found.map((p) => p.reraId));
   } catch {
     return Response.json({ error: "Could not reach the database." }, { status: 500 });
   }
 
-  const toCreate = batchDeduped.filter((r) => !(r.reraId && existingIds.has(r.reraId)));
+  const toCreate = batch.filter((r) => !(r.reraId && existingIds.has(r.reraId)));
   const skipped = clean.length - toCreate.length;
+  const withPrice = toCreate.filter((r) => r.priceMin > 0).length;
 
   try {
     if (toCreate.length) {
@@ -71,19 +108,21 @@ export async function POST(req: Request) {
           developer: r.developer,
           city: r.city,
           locality: r.locality,
-          bhk: "", // unknown until enriched
-          priceMin: 0,
-          priceMax: 0,
-          carpetSqft: 0,
+          bhk: BHKS.includes(r.bhk) ? r.bhk : "",
+          priceMin: r.priceMin,
+          priceMax: r.priceMax,
+          carpetSqft: r.carpetSqft,
           facing: "East",
           distanceToStationM: 0,
           reraId: r.reraId,
           possession: r.possession || null,
-          status: "Pending", // never auto-live
+          totalTowers: r.totalTowers > 0 ? r.totalTowers : null,
+          totalFloors: r.totalFloors || null,
+          status: "Pending", // never auto-live — manager verifies price first
         })),
       });
     }
-    return Response.json({ ok: true, created: toCreate.length, skipped, total: clean.length });
+    return Response.json({ ok: true, created: toCreate.length, skipped, withPrice, total: clean.length });
   } catch (err) {
     console.error("RERA import error:", err);
     return Response.json({ error: "Could not save the imported projects." }, { status: 500 });

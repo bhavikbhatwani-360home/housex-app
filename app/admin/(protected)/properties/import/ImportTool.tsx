@@ -5,18 +5,25 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
-// Our skeleton fields and the keywords we use to auto-guess the CSV column.
+// Our fields and the keywords we use to auto-guess the CSV column.
 const TARGETS: { key: string; label: string; required?: boolean; hints: string[] }[] = [
   { key: "name", label: "Project name", required: true, hints: ["project name", "projectname", "project", "name of project", "name"] },
   { key: "developer", label: "Developer / promoter", hints: ["promoter", "developer", "builder", "company"] },
-  { key: "reraId", label: "RERA number", hints: ["registration", "rera", "certificate", "reg no", "regno"] },
-  { key: "locality", label: "Locality / taluka", hints: ["taluka", "village", "locality", "location", "area", "tehsil"] },
+  { key: "reraId", label: "RERA number", hints: ["primary rera", "registration", "rera no", "rera", "certificate", "reg no", "regno"] },
+  { key: "locality", label: "Locality / area", hints: ["location", "taluka", "village", "locality", "area", "tehsil"] },
   { key: "city", label: "City / district", hints: ["district", "city"] },
-  { key: "possession", label: "Possession / completion", hints: ["completion", "possession", "end date", "proposed date"] },
+  { key: "possession", label: "Possession", hints: ["target possession", "completion", "possession", "end date", "proposed date"] },
+  { key: "priceMin", label: "Price (min)", hints: ["price (min)", "price min", "min price", "starting price", "price from"] },
+  { key: "priceMax", label: "Price (max)", hints: ["price (max)", "price max", "max price", "price to"] },
+  { key: "bhk", label: "BHK configuration", hints: ["bhk", "configuration", "config", "unit type"] },
+  { key: "carpetSqft", label: "Carpet area", hints: ["carpet", "area (sqft)", "sqft", "size"] },
+  { key: "towers", label: "Towers", hints: ["towers", "tower", "buildings", "wings"] },
+  { key: "floors", label: "Floors", hints: ["floors", "floor", "storeys"] },
 ];
 
 // Minimal but quote-aware CSV parser (handles "a,b", escaped "" and CRLF).
-function parseCsv(text: string): { headers: string[]; rows: string[][] } {
+function parseCsv(raw: string): { headers: string[]; rows: string[][] } {
+  const text = raw.replace(/^﻿/, ""); // strip UTF-8 BOM (common in exports)
   const out: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -64,7 +71,7 @@ export default function ImportTool() {
   const [map, setMap] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ created: number; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ created: number; skipped: number; withPrice: number } | null>(null);
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
@@ -104,7 +111,7 @@ export default function ImportTool() {
       });
       const data = await res.json();
       if (res.ok) {
-        setResult({ created: data.created, skipped: data.skipped });
+        setResult({ created: data.created, skipped: data.skipped, withPrice: data.withPrice ?? 0 });
         router.refresh();
       } else setError(data.error || "Import failed.");
     } catch {
@@ -174,6 +181,8 @@ export default function ImportTool() {
                     <th className="text-left font-medium px-3 py-2">Project</th>
                     <th className="text-left font-medium px-3 py-2">Developer</th>
                     <th className="text-left font-medium px-3 py-2">Locality</th>
+                    <th className="text-left font-medium px-3 py-2">Price</th>
+                    <th className="text-left font-medium px-3 py-2">BHK</th>
                     <th className="text-left font-medium px-3 py-2">RERA</th>
                   </tr>
                 </thead>
@@ -183,6 +192,8 @@ export default function ImportTool() {
                       <td className="px-3 py-2 font-medium">{r.name}</td>
                       <td className="px-3 py-2 text-hx-slate">{r.developer || "—"}</td>
                       <td className="px-3 py-2 text-hx-slate">{r.locality || "—"}</td>
+                      <td className="px-3 py-2 text-hx-slate">{r.priceMin || r.priceMax ? `${r.priceMin || "?"}–${r.priceMax || "?"}` : "—"}</td>
+                      <td className="px-3 py-2 text-hx-slate">{r.bhk || "—"}</td>
                       <td className="px-3 py-2 num text-hx-muted">{r.reraId || "—"}</td>
                     </tr>
                   ))}
@@ -209,8 +220,9 @@ export default function ImportTool() {
               <CheckCircle2 className="w-4.5 h-4.5" /> Imported {result.created} projects
             </div>
             <p className="text-[12.5px] text-hx-slate mt-1">
+              {result.withPrice > 0 && `${result.withPrice} came in with a price. `}
               {result.skipped > 0 && `${result.skipped} skipped (already in the system). `}
-              They&apos;re in your <strong>Pending</strong> queue now — open each one to enrich it with a brochure, then approve.
+              All are <strong>Pending</strong> — verify the price (and add brochure details), then approve to go Live.
             </p>
             <Link href="/admin/properties" className="mt-3 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-hx-ink text-white text-[13px] font-semibold">
               Go to properties
