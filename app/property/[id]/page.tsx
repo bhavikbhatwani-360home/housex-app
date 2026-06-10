@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft, BadgeCheck, MapPin, Sparkles, Check, Building2, Compass, Train,
-  IndianRupee, Layers, CalendarPlus, Lock, MessageSquare, Play, KeyRound,
+  IndianRupee, Layers, CalendarPlus, MessageSquare, Play, KeyRound,
   FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -330,10 +330,9 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
       {/* sticky actions */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-hx-line px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="max-w-2xl mx-auto grid grid-cols-[1fr_auto_auto] gap-2">
+        <div className="max-w-2xl mx-auto grid grid-cols-[1fr_auto] gap-2">
           <Link href="/chat" className="h-11 rounded-xl bg-hx-ink text-white text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5"><MessageSquare className="w-4 h-4" /> Ask Baba about this</Link>
-          <Link href="/chat" className="h-11 px-3.5 rounded-xl bg-white border border-hx-line text-hx-ink text-[13px] font-semibold inline-flex items-center justify-center gap-1.5"><CalendarPlus className="w-4 h-4" /> Visit</Link>
-          <Link href="/chat" className="h-11 px-3.5 rounded-xl bg-hx-red text-white text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 shadow-hx-red"><Lock className="w-4 h-4" /> ₹999</Link>
+          <Link href="/chat" className="h-11 px-4 rounded-xl bg-hx-red text-white text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 shadow-hx-red"><CalendarPlus className="w-4 h-4" /> Book a visit</Link>
         </div>
       </div>
     </div>

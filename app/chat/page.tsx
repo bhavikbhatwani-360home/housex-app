@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Sparkles, ArrowUp, Plus, House, IndianRupee, Compass, CalendarCheck, MapPin, BadgeCheck, CalendarPlus, X, Check, Video, Building2, ShieldCheck, Lock } from "lucide-react";
+import { Sparkles, ArrowUp, Plus, House, IndianRupee, Compass, CalendarCheck, MapPin, BadgeCheck, CalendarPlus, X, Check, Video, Building2, BadgePercent } from "lucide-react";
 
 type PropertyCard = {
   id: string; name: string; developer: string; locality: string; city: string;
@@ -52,7 +52,7 @@ function initials(s: string) {
   return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "D";
 }
 
-function PropertyCardView({ p, stripe, onBook, onToken }: { p: PropertyCard; stripe: string; onBook: () => void; onToken: () => void }) {
+function PropertyCardView({ p, stripe, onBook }: { p: PropertyCard; stripe: string; onBook: () => void }) {
   const range = p.priceMin === p.priceMax ? `₹${p.priceMin} L` : `₹${p.priceMin}–${p.priceMax} L`;
   return (
     <div className="shrink-0 w-[240px] rounded-2xl border border-hx-line bg-white overflow-hidden shadow-hx">
@@ -76,14 +76,9 @@ function PropertyCardView({ p, stripe, onBook, onToken }: { p: PropertyCard; str
           <span className="num text-[15px] font-bold tracking-tight">{range}</span>
           <span className="text-[11px] text-hx-muted">· {p.bhk} · {p.facing}</span>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-1.5">
-          <button onClick={onBook} className="h-9 rounded-lg bg-white border border-hx-line text-hx-ink text-[12px] font-semibold inline-flex items-center justify-center gap-1">
-            <CalendarPlus className="w-3.5 h-3.5" /> Visit
-          </button>
-          <button onClick={onToken} className="h-9 rounded-lg bg-hx-red text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1 shadow-hx-red">
-            <Lock className="w-3.5 h-3.5" /> Block ₹999
-          </button>
-        </div>
+        <button onClick={onBook} className="mt-3 w-full h-9 rounded-lg bg-hx-red text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1.5 shadow-hx-red">
+          <CalendarPlus className="w-3.5 h-3.5" /> Book a visit
+        </button>
       </div>
     </div>
   );
@@ -94,7 +89,6 @@ export default function Chat() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(false);
   const [bookingFor, setBookingFor] = useState<PropertyCard | null>(null);
-  const [tokenFor, setTokenFor] = useState<PropertyCard | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const idRef = useRef(0);
@@ -231,28 +225,6 @@ export default function Chat() {
     }
   };
 
-  const confirmToken = async (buyerName: string, buyerPhone: string, buyerPan: string) => {
-    const p = tokenFor;
-    if (!p) return;
-    setTokenFor(null);
-    try {
-      const res = await fetch("/api/token", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId: ensureConvId(), propertyId: p.id, propertyName: p.name, buyerName, buyerPhone, buyerPan }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html:
-          `🎉 <span class="font-semibold">${p.name} is blocked for you!</span><br/>₹999 token paid — fully refundable — and your unit is held for <span class="font-semibold">72 hours</span>. The developer has been notified, and I'll guide you through booking and payment next.` }]);
-      } else {
-        setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: `That didn't go through. Want to try again?` }]);
-      }
-    } catch {
-      setMessages((m) => [...m, { id: ++idRef.current, role: "baba", html: `I couldn't reach the payment service — try again in a moment?` }]);
-    }
-  };
-
   return (
     <div className="flex flex-col h-dvh bg-white text-hx-ink">
       {/* top bar */}
@@ -341,7 +313,7 @@ export default function Chat() {
                     {m.properties && m.properties.length > 0 && (
                       <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
                         {m.properties.map((p, i) => (
-                          <PropertyCardView key={p.id} p={p} stripe={STRIPES[i % STRIPES.length]} onBook={() => setBookingFor(p)} onToken={() => setTokenFor(p)} />
+                          <PropertyCardView key={p.id} p={p} stripe={STRIPES[i % STRIPES.length]} onBook={() => setBookingFor(p)} />
                         ))}
                       </div>
                     )}
@@ -401,63 +373,6 @@ export default function Chat() {
       {bookingFor && (
         <BookingSheet property={bookingFor} onClose={() => setBookingFor(null)} onConfirm={confirmVisit} />
       )}
-      {tokenFor && (
-        <TokenSheet property={tokenFor} onClose={() => setTokenFor(null)} onConfirm={confirmToken} />
-      )}
-    </div>
-  );
-}
-
-function TokenSheet({ property, onClose, onConfirm }: { property: PropertyCard; onClose: () => void; onConfirm: (name: string, phone: string, pan: string) => void }) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [pan, setPan] = useState("");
-  const [busy, setBusy] = useState(false);
-  const valid = name.trim().length > 1 && phone.trim().length >= 10;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full sm:max-w-[440px] bg-white rounded-t-3xl sm:rounded-3xl border border-hx-line shadow-hx-lg p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-[16px] font-semibold tracking-tight">Block this home</div>
-            <div className="text-[12.5px] text-hx-muted">{property.name} · {property.locality}</div>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-hx-bg inline-flex items-center justify-center text-hx-slate"><X className="w-4 h-4" /></button>
-        </div>
-
-        {/* value prop */}
-        <div className="mt-4 rounded-2xl bg-hx-red/5 border border-hx-red/15 p-4">
-          <div className="flex items-baseline gap-2">
-            <span className="num text-[28px] font-extrabold tracking-tight text-hx-red">₹999</span>
-            <span className="text-[12.5px] text-hx-slate font-medium">refundable token</span>
-          </div>
-          <ul className="mt-2 space-y-1 text-[12.5px] text-hx-slate">
-            <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-hx-success" /> Holds your unit for 72 hours</li>
-            <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-hx-success" /> Price locked at today&apos;s rate</li>
-            <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-hx-success" /> 100% refundable, no obligation</li>
-          </ul>
-        </div>
-
-        {/* quick KYC */}
-        <div className="mt-4 space-y-2.5">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="w-full h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50" />
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" inputMode="tel" className="w-full h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50" />
-          <input value={pan} onChange={(e) => setPan(e.target.value.toUpperCase())} placeholder="PAN (optional)" className="w-full h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50" />
-        </div>
-
-        <button
-          onClick={() => { if (!valid || busy) return; setBusy(true); onConfirm(name.trim(), phone.trim(), pan.trim()); }}
-          disabled={!valid || busy}
-          className="mt-4 w-full h-12 rounded-2xl bg-hx-red text-white text-[15px] font-semibold shadow-hx-red inline-flex items-center justify-center gap-2 disabled:opacity-40"
-        >
-          <Lock className="w-4 h-4" /> Pay ₹999 &amp; block
-        </button>
-        <p className="mt-2 text-center text-[11px] text-hx-muted inline-flex items-center justify-center gap-1 w-full">
-          <ShieldCheck className="w-3 h-3" /> Secure · refundable · held in RERA escrow
-        </p>
-      </div>
     </div>
   );
 }
