@@ -54,9 +54,9 @@ export default function Landing() {
       <nav className="px-5 sm:px-8 py-3.5 border-b border-hx-line/70 flex items-center bg-white sticky top-0 z-20">
         <Link href="/" className="flex items-end" aria-label="HouseX">
           <span className="text-[19px] font-extrabold tracking-tight leading-none">HOUSE</span>
-          <svg viewBox="0 0 240 240" className="w-[27px] h-[27px] -ml-[2px] -mb-[5px] text-hx-red" fill="currentColor" aria-hidden>
-            <path d="M64 70 L114 70 L172 206 L122 206 Z" />
-            <path d="M46 206 L116 122 L212 20 L136 132 L92 206 Z" />
+          <svg viewBox="20 20 200 200" className="w-[30px] h-[30px] ml-[1px] -mb-[6px] text-hx-red" fill="currentColor" aria-hidden>
+            <path d="M64 70 L116 70 L174 206 L122 206 Z" />
+            <path d="M46 206 L116 128 L208 20 L128 132 L90 206 Z" />
           </svg>
         </Link>
         <div className="ml-auto flex items-center gap-1.5">

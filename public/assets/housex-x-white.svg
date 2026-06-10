@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 20 200 200" fill="none">
   <!-- HouseX "X" mark: italic x with check-spike, white -->
-  <path fill="#fff" d="M64 70 L114 70 L172 206 L122 206 Z"/>
-  <path fill="#fff" d="M46 206 L116 122 L212 20 L136 132 L92 206 Z"/>
+  <path fill="#fff" d="M64 70 L116 70 L174 206 L122 206 Z"/>
+  <path fill="#fff" d="M46 206 L116 128 L208 20 L128 132 L90 206 Z"/>
 </svg>
