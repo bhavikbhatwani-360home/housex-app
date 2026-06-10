@@ -140,6 +140,23 @@ model Conversation {
   createdAt DateTime  @default(now())
 }
 
+model Offer {
+  id               String   @id @default(cuid())
+  conversationId   String
+  leadId           String?
+  developerId      String?
+  propertyId       String?
+  propertyName     String
+  listPriceLakh    Int?
+  offerPriceLakh   Int
+  note             String?
+  validUntil       String?
+  status           String   @default("Pending") // Pending | Accepted | Declined | Countered
+  counterPriceLakh Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
 model Message {
   id             String       @id @default(cuid())
   conversationId String

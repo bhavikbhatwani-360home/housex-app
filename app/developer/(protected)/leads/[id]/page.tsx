@@ -4,6 +4,7 @@ import { ArrowLeft, Sparkles, Phone, Home } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getDeveloper } from "@/lib/devauth";
 import LeadReply from "./LeadReply";
+import SendOffer from "./SendOffer";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +83,8 @@ export default async function DevLeadDetail({ params }: { params: Promise<{ id: 
         </div>
 
         <LeadReply leadId={lead.id} />
-        <p className="mt-2 text-[11.5px] text-hx-muted">Your reply appears directly in the buyer&apos;s Baba chat, as {lead.developerId ? "your company" : "the developer"}.</p>
+        <div className="mt-3"><SendOffer leadId={lead.id} /></div>
+        <p className="mt-2 text-[11.5px] text-hx-muted">Your reply &amp; offers appear directly in the buyer&apos;s Baba chat, as your company.</p>
       </div>
     </div>
   );

@@ -10,10 +10,16 @@ type PropertyCard = {
   distanceToStationM: number; reraId: string; unitCount: number;
 };
 
+type OfferData = {
+  id: string; propertyName: string; listPriceLakh: number | null; offerPriceLakh: number;
+  note: string | null; validUntil: string | null; status: string; counterPriceLakh: number | null;
+};
+
 type Msg =
   | { id: number; role: "user"; text: string; sid?: string }
   | { id: number; role: "baba"; html: string; properties?: PropertyCard[]; sid?: string }
-  | { id: number; role: "developer"; html: string; senderName: string; sid?: string };
+  | { id: number; role: "developer"; html: string; senderName: string; sid?: string }
+  | { id: number; role: "offer"; offer: OfferData; sid: string };
 
 const STRIPES = [
   "repeating-linear-gradient(135deg,#F1E2D8 0 12px,#FAEFE7 12px 24px)",
@@ -84,6 +90,56 @@ function PropertyCardView({ p, stripe, onBook }: { p: PropertyCard; stripe: stri
   );
 }
 
+function OfferCardChat({ offer, onRespond }: { offer: OfferData; onRespond: (id: string, action: "accept" | "decline" | "counter", counter?: number) => void }) {
+  const [countering, setCountering] = useState(false);
+  const [counter, setCounter] = useState("");
+  const list = offer.listPriceLakh;
+  const savings = list && list > offer.offerPriceLakh ? list - offer.offerPriceLakh : 0;
+  const resolved = offer.status !== "Pending";
+
+  return (
+    <div className="rounded-2xl border border-hx-line bg-white overflow-hidden shadow-hx max-w-[360px]">
+      <div className="bg-hx-ink text-white px-4 py-2.5 flex items-center justify-between gap-2">
+        <span className="text-[12px] font-semibold tracking-tight inline-flex items-center gap-1.5 min-w-0"><BadgePercent className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Special offer · {offer.propertyName}</span></span>
+        {offer.validUntil && <span className="text-[10px] font-semibold bg-white/10 rounded-full px-2 py-0.5 shrink-0">valid {offer.validUntil}</span>}
+      </div>
+      <div className="p-4">
+        <div className="flex items-baseline gap-2">
+          <span className="num text-[26px] font-extrabold tracking-tight">₹{offer.offerPriceLakh} L</span>
+          {list ? <span className="num text-[14px] text-hx-muted line-through">₹{list} L</span> : null}
+        </div>
+        {savings > 0 && <div className="text-[12px] text-hx-success font-semibold num">You save ₹{savings} L</div>}
+        {offer.note && <p className="mt-2 text-[12.5px] text-hx-slate leading-snug">{offer.note}</p>}
+
+        {resolved ? (
+          <div className={`mt-3 rounded-lg px-3 py-2 text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${offer.status === "Accepted" ? "bg-hx-success/10 text-hx-success" : offer.status === "Countered" ? "bg-hx-warning/10 text-hx-warning" : "bg-hx-bg text-hx-slate"}`}>
+            {offer.status === "Accepted" && <Check className="w-3.5 h-3.5" />}
+            {offer.status === "Accepted" ? "You accepted this offer" : offer.status === "Countered" ? `You countered ₹${offer.counterPriceLakh} L` : "You declined this offer"}
+          </div>
+        ) : countering ? (
+          <div className="mt-3">
+            <div className="flex h-10 rounded-lg border border-hx-line overflow-hidden">
+              <span className="inline-flex items-center px-3 text-[13px] font-semibold text-hx-muted bg-hx-bg border-r border-hx-line">₹</span>
+              <input value={counter} onChange={(e) => setCounter(e.target.value)} type="number" placeholder="Your price" className="flex-1 px-3 text-[14px] num outline-none" />
+              <span className="inline-flex items-center px-3 text-[11px] text-hx-muted">L</span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <button onClick={() => setCountering(false)} className="h-9 rounded-lg border border-hx-line text-[12.5px] font-semibold text-hx-slate">Back</button>
+              <button onClick={() => { const c = Number(counter); if (c > 0) onRespond(offer.id, "counter", c); }} className="h-9 rounded-lg bg-hx-red text-white text-[12.5px] font-semibold shadow-hx-red">Send counter</button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3 grid grid-cols-3 gap-1.5">
+            <button onClick={() => onRespond(offer.id, "decline")} className="h-10 rounded-lg border border-hx-line text-hx-slate text-[12.5px] font-semibold">Decline</button>
+            <button onClick={() => setCountering(true)} className="h-10 rounded-lg border border-hx-ink text-hx-ink text-[12.5px] font-semibold">Counter</button>
+            <button onClick={() => onRespond(offer.id, "accept")} className="h-10 rounded-lg bg-hx-red text-white text-[12.5px] font-semibold shadow-hx-red">Accept</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Chat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -131,6 +187,17 @@ export default function Chat() {
           else if (m.role === "developer") loaded.push({ id: ++idRef.current, role: "developer", html: formatReply(m.content), senderName: m.senderName || "Developer", sid: m.id });
           else loaded.push({ id: ++idRef.current, role: "baba", html: formatReply(m.content), sid: m.id });
         }
+        // existing offers
+        try {
+          const ores = await fetch(`/api/offers?conversationId=${cid}`);
+          const odata = await ores.json();
+          for (const o of odata.offers || []) {
+            const key = "offer-" + o.id;
+            if (seenRef.current.has(key)) continue;
+            seenRef.current.add(key);
+            loaded.push({ id: ++idRef.current, role: "offer", offer: o, sid: o.id });
+          }
+        } catch {}
         if (loaded.length) setMessages(loaded);
         lastTsRef.current = maxTs || new Date().toISOString();
       } catch {}
@@ -152,6 +219,19 @@ export default function Chat() {
         }
         if (incoming.length) setMessages((cur) => [...cur, ...incoming]);
       } catch {}
+      // new offers
+      try {
+        const ores = await fetch(`/api/offers?conversationId=${c}`);
+        const odata = await ores.json();
+        const newOffers: Msg[] = [];
+        for (const o of odata.offers || []) {
+          const key = "offer-" + o.id;
+          if (seenRef.current.has(key)) continue;
+          seenRef.current.add(key);
+          newOffers.push({ id: ++idRef.current, role: "offer", offer: o, sid: o.id });
+        }
+        if (newOffers.length) setMessages((cur) => [...cur, ...newOffers]);
+      } catch {}
     }, 5000);
     return () => clearInterval(poll);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -167,10 +247,11 @@ export default function Chat() {
   const send = async (raw: string) => {
     const txt = raw.trim();
     if (!txt || typing) return;
-    const history = messages.map((m) => ({
-      role: m.role === "user" ? ("user" as const) : ("assistant" as const),
-      content: m.role === "user" ? m.text : htmlToText(m.html),
-    }));
+    const history: { role: "user" | "assistant"; content: string }[] = [];
+    for (const m of messages) {
+      if (m.role === "user") history.push({ role: "user", content: m.text });
+      else if (m.role === "baba" || m.role === "developer") history.push({ role: "assistant", content: htmlToText(m.html) });
+    }
     setMessages((m) => [...m, { id: ++idRef.current, role: "user", text: txt }]);
     setInput("");
     requestAnimationFrame(autoGrow);
@@ -199,6 +280,31 @@ export default function Chat() {
     if (typeof window !== "undefined") localStorage.setItem("hx-conv", nid);
     seenRef.current = new Set();
     lastTsRef.current = new Date().toISOString();
+  };
+
+  const respondOffer = async (offerId: string, action: "accept" | "decline" | "counter", counterPriceLakh?: number) => {
+    const newStatus = action === "accept" ? "Accepted" : action === "decline" ? "Declined" : "Countered";
+    setMessages((cur) =>
+      cur.map((m) =>
+        m.role === "offer" && m.offer.id === offerId
+          ? { ...m, offer: { ...m.offer, status: newStatus, counterPriceLakh: action === "counter" ? (counterPriceLakh ?? null) : m.offer.counterPriceLakh } }
+          : m
+      )
+    );
+    try {
+      await fetch(`/api/offers/${offerId}/respond`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action, counterPriceLakh }),
+      });
+    } catch {}
+    const follow =
+      action === "accept"
+        ? `🎉 Great choice! I've told the developer you accepted. They'll reach out to take it forward.`
+        : action === "decline"
+        ? `No worries — I'll keep an eye out for better-fit homes nearby.`
+        : `Sent your counter of ₹${counterPriceLakh} L to the developer. They usually reply quickly.`;
+    setMessages((cur) => [...cur, { id: ++idRef.current, role: "baba", html: follow }]);
   };
 
   const confirmVisit = async (date: string, slot: string, mode: string) => {
@@ -299,6 +405,14 @@ export default function Chat() {
                       </div>
                       <div className="inline-block rounded-2xl rounded-tl-md bg-white border border-hx-line px-3.5 py-2.5 text-[15px] leading-relaxed text-hx-ink" dangerouslySetInnerHTML={{ __html: m.html }} />
                     </div>
+                  </div>
+                );
+              }
+              if (m.role === "offer") {
+                return (
+                  <div key={m.id} className="flex gap-3">
+                    <span className="w-7 h-7 rounded-full bg-hx-ink text-white inline-flex items-center justify-center shrink-0 mt-0.5"><BadgePercent className="w-3.5 h-3.5" /></span>
+                    <div className="flex-1 min-w-0 pt-0.5"><OfferCardChat offer={m.offer} onRespond={respondOffer} /></div>
                   </div>
                 );
               }
