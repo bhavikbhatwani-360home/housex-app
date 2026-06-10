@@ -170,13 +170,20 @@ export default function Chat() {
   );
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const sendRef = useRef<(t: string) => void>(() => {});
+  // True when the landing page handed us a query (/chat?q=…) that hasn't been
+  // sent yet — used to skip the welcome screen so the transition is seamless.
+  const hasPendingQ = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).has("q"),
+    () => false
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const idRef = useRef(0);
   const convIdRef = useRef<string>("");
   const seenRef = useRef<Set<string>>(new Set());
   const lastTsRef = useRef<string>("");
-  const empty = messages.length === 0;
+  const empty = messages.length === 0 && !hasPendingQ;
 
   const ensureConvId = () => {
     if (convIdRef.current) return convIdRef.current;
@@ -229,15 +236,9 @@ export default function Chat() {
             loaded.push({ id: ++idRef.current, role: "offer", offer: o, sid: o.id });
           }
         } catch {}
-        if (loaded.length) setMessages(loaded);
+        if (loaded.length) setMessages((cur) => [...loaded, ...cur]);
         lastTsRef.current = maxTs || new Date().toISOString();
       } catch {}
-      // landing-page search box hands the query over via /chat?q=…
-      const q = new URLSearchParams(window.location.search).get("q");
-      if (q && q.trim()) {
-        window.history.replaceState(null, "", "/chat");
-        setTimeout(() => sendRef.current(q), 150);
-      }
     })();
 
     const poll = setInterval(async () => {
@@ -364,6 +365,17 @@ export default function Chat() {
   useEffect(() => {
     sendRef.current = send;
   });
+
+  // landing-page search box hands the query over via /chat?q=… — send it
+  // immediately on mount (declared after the sendRef effect so it's ready)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q && q.trim()) {
+      window.history.replaceState(null, "", "/chat");
+      sendRef.current(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleMic = () => {
     if (listening) {
@@ -554,7 +566,7 @@ export default function Chat() {
                 </div>
               );
             })}
-            {typing && (
+            {(typing || messages.length === 0) && (
               <div className="flex gap-3">
                 <span className="w-7 h-7 rounded-lg bg-hx-red inline-flex items-center justify-center shrink-0 mt-0.5 shadow-hx-red">
                   <Sparkles className="w-3.5 h-3.5 text-white" />

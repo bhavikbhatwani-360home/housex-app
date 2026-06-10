@@ -1,15 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 
 /** Hero search box — type your ask here and it opens the chat with it already sent. */
 export default function HeroSearch() {
   const [q, setQ] = useState("");
+  const [going, setGoing] = useState(false);
   const router = useRouter();
 
+  // Pre-load the chat page so the switch is instant when the user submits
+  useEffect(() => {
+    router.prefetch("/chat");
+  }, [router]);
+
   const go = () => {
+    if (going) return;
+    setGoing(true);
     const txt = q.trim();
     router.push(txt ? `/chat?q=${encodeURIComponent(txt)}` : "/chat");
   };
@@ -31,9 +39,10 @@ export default function HeroSearch() {
       />
       <button
         type="submit"
-        className="h-10 px-4 rounded-xl bg-hx-red text-white text-[13px] font-medium inline-flex items-center gap-1.5 shadow-hx-red shrink-0"
+        disabled={going}
+        className="h-10 px-4 rounded-xl bg-hx-red text-white text-[13px] font-medium inline-flex items-center gap-1.5 shadow-hx-red shrink-0 disabled:opacity-70 transition-opacity"
       >
-        Ask HouseX AI <ArrowRight className="w-4 h-4" />
+        {going ? "Opening chat…" : "Ask HouseX AI"} <ArrowRight className="w-4 h-4" />
       </button>
     </form>
   );
