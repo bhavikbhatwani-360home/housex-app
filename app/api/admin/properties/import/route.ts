@@ -54,6 +54,13 @@ export async function POST(req: Request) {
 
   const s = (v: unknown) => (typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "");
 
+  // A real MahaRERA number looks like a letter + digits (P99000053022).
+  // Junk like "Not Registered" / "Applied" becomes blank (so it never dedupes).
+  const cleanRera = (v: unknown) => {
+    const raw = s(v);
+    return /^[A-Za-z]\d{5,}/.test(raw) ? raw : "";
+  };
+
   const clean = rows
     .map((r) => {
       const priceMin = parseMoneyLakh(r.priceMin);
@@ -63,7 +70,7 @@ export async function POST(req: Request) {
         developer: s(r.developer) || "Unknown developer",
         city: s(r.city) || "Mumbai (MMR)",
         locality: s(r.locality),
-        reraId: s(r.reraId),
+        reraId: cleanRera(r.reraId),
         possession: s(r.possession),
         priceMin,
         priceMax: Math.max(priceMin, priceMax),

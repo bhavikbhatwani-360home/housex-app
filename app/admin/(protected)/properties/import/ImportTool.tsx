@@ -10,7 +10,7 @@ const TARGETS: { key: string; label: string; required?: boolean; hints: string[]
   { key: "name", label: "Project name", required: true, hints: ["project name", "projectname", "project", "name of project", "name"] },
   { key: "developer", label: "Developer / promoter", hints: ["promoter", "developer", "builder", "company"] },
   { key: "reraId", label: "RERA number", hints: ["primary rera", "registration", "rera no", "rera", "certificate", "reg no", "regno"] },
-  { key: "locality", label: "Locality / area", hints: ["location", "taluka", "village", "locality", "area", "tehsil"] },
+  { key: "locality", label: "Locality / area", hints: ["area", "location", "taluka", "village", "locality", "tehsil"] },
   { key: "city", label: "City / district", hints: ["district", "city"] },
   { key: "possession", label: "Possession", hints: ["target possession", "completion", "possession", "end date", "proposed date"] },
   { key: "priceMin", label: "Price (min)", hints: ["price (min)", "price min", "min price", "starting price", "price from"] },
