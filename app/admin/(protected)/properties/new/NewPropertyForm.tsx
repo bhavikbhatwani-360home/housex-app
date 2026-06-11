@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, X, Eye, RotateCcw, Flame, Tag, MapPin, BadgeCheck, Lock, Check } from "lucide-react";
 
 type UnitRow = { floor: string; priceLakh: string; listPriceLakh: string; tag: string; facing: string; carpetSqft: string };
 type DevOption = { id: string; company: string };
@@ -44,12 +44,62 @@ export default function NewPropertyForm({
   );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // ── photos & floor plans, uploaded straight to the listing ──
   const photoRef = useRef<HTMLInputElement>(null);
   const planRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [plans, setPlans] = useState<string[]>([]);
+
+  // ── draft auto-save (so nothing is ever lost if the phone reloads the page,
+  //    the camera kills the tab, or a save fails). Restored on next visit. ──
+  const draftKey = `hx:propdraft:${propertyId ?? "new"}`;
+  const [recovered, setRecovered] = useState(false);
+  const loadedRef = useRef(false);
+
+  // restore a saved draft once, on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.f) setF((p) => ({ ...p, ...d.f }));
+        if (Array.isArray(d.units) && d.units.length) setUnits(d.units);
+        if (Array.isArray(d.photos)) setPhotos(d.photos);
+        if (Array.isArray(d.plans)) setPlans(d.plans);
+        if (typeof d.developerId === "string") setDeveloperId(d.developerId);
+        setRecovered(true);
+      }
+    } catch {
+      /* corrupt / unavailable storage — ignore */
+    }
+    loadedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // persist the draft on every change (debounced). Text always saves; photos are
+  // attempted but dropped first if they blow the storage quota — typed details
+  // (the painful thing to lose) are never sacrificed.
+  useEffect(() => {
+    if (!loadedRef.current) return;
+    const t = setTimeout(() => {
+      const write = (withMedia: boolean) =>
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ f, units, developerId, ...(withMedia ? { photos, plans } : {}), savedAt: Date.now() })
+        );
+      try {
+        write(true);
+      } catch {
+        try { write(false); } catch { /* give up silently */ }
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [f, units, photos, plans, developerId, draftKey]);
+
+  const clearDraft = () => { try { localStorage.removeItem(draftKey); } catch {} };
+  const discardDraft = () => { clearDraft(); window.location.reload(); };
   const [imgBusy, setImgBusy] = useState(false);
 
   // Resize an image client-side to keep stored photos light (~1600px JPEG).
@@ -155,6 +205,7 @@ export default function NewPropertyForm({
       });
       const data = await res.json();
       if (res.ok) {
+        clearDraft(); // saved for real — drop the local recovery copy
         router.push(goNext && nextPendingId ? `/admin/properties/${nextPendingId}/edit` : "/admin/properties");
         router.refresh();
       } else setError(data.error || "Could not save.");
@@ -178,6 +229,9 @@ export default function NewPropertyForm({
         </Link>
         <h1 className="text-[15px] sm:text-[16px] font-semibold tracking-tight truncate min-w-0">{isEdit ? "Edit property" : "Add property"}</h1>
         <div className="ml-auto flex items-center gap-2 shrink-0">
+          <button type="button" onClick={() => setShowPreview(true)} className="h-9 px-3 sm:px-4 rounded-lg border border-hx-line text-hx-ink text-[13px] font-semibold hover:bg-hx-bg inline-flex items-center gap-1.5">
+            <Eye className="w-4 h-4" /> Preview
+          </button>
           <button form="adminpropform" disabled={busy} className="h-9 px-3 sm:px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-40">
             {busy ? "Saving…" : isEdit ? "Save" : "Publish"}
           </button>
@@ -188,6 +242,16 @@ export default function NewPropertyForm({
           )}
         </div>
       </header>
+
+      {recovered && (
+        <div className="bg-hx-warning/10 border-b border-hx-warning/30 px-4 sm:px-6 py-2.5 flex items-center gap-2 text-[12.5px]">
+          <RotateCcw className="w-4 h-4 text-hx-warning shrink-0" />
+          <span className="text-hx-ink">Recovered your unsaved details from last time — keep editing and Save when ready.</span>
+          <button type="button" onClick={discardDraft} className="ml-auto shrink-0 text-[12px] font-semibold text-hx-slate hover:text-hx-danger underline">
+            Discard
+          </button>
+        </div>
+      )}
 
       <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 max-w-5xl">
         <form id="adminpropform" onSubmit={submit} className="space-y-5">
@@ -339,6 +403,151 @@ export default function NewPropertyForm({
                 ? `Published on behalf of ${devLabel} — their CRM receives every lead from this listing.`
                 : "Platform listing — leads stay in the operator console."}
             </p>
+          </div>
+          <button type="button" onClick={() => setShowPreview(true)} className="mt-2.5 w-full h-10 rounded-lg border border-hx-line text-[13px] font-semibold text-hx-ink hover:bg-hx-bg inline-flex items-center justify-center gap-1.5">
+            <Eye className="w-4 h-4 text-hx-red" /> See how the page looks
+          </button>
+        </div>
+      </div>
+
+      {showPreview && (
+        <BuyerPreview
+          onClose={() => setShowPreview(false)}
+          name={f.name} developer={devLabel} locality={f.locality} city={f.city}
+          bhk={f.bhk} facing={f.facing} reraId={f.reraId} status={f.status}
+          offerNote={f.offerNote} hero={photos[0] || null}
+          amenities={f.amenities.split(",").map((a) => a.trim()).filter(Boolean)}
+          units={units.map((u) => ({
+            floor: Number(u.floor) || 0, facing: u.facing, carpetSqft: Number(u.carpetSqft) || 0,
+            priceLakh: Number(u.priceLakh) || 0, listPriceLakh: Number(u.listPriceLakh) || 0, tag: u.tag.trim(),
+          })).filter((u) => u.priceLakh > 0)}
+        />
+      )}
+    </div>
+  );
+}
+
+// A realistic, mobile-friendly preview of how this listing will look to a buyer
+// on the public property page — built live from the form, so Pawan can check it
+// before saving (and on his phone).
+type PUnit = { floor: number; facing: string; carpetSqft: number; priceLakh: number; listPriceLakh: number; tag: string };
+function BuyerPreview({
+  onClose, name, developer, locality, city, bhk, facing, reraId, status, offerNote, hero, amenities, units,
+}: {
+  onClose: () => void; name: string; developer: string; locality: string; city: string; bhk: string; facing: string;
+  reraId: string; status: string; offerNote: string; hero: string | null; amenities: string[]; units: PUnit[];
+}) {
+  const prices = units.map((u) => u.priceLakh).filter((x) => x > 0);
+  const lo = prices.length ? Math.min(...prices) : 0;
+  const hi = prices.length ? Math.max(...prices) : 0;
+  const range = prices.length ? (lo === hi ? `₹${lo} L` : `₹${lo}–${hi} L`) : "—";
+  const save = (u: PUnit) => (u.listPriceLakh > u.priceLakh ? u.listPriceLakh - u.priceLakh : 0);
+  const bestId = units.reduce<{ i: number; s: number }>((acc, u, i) => (save(u) > acc.s ? { i, s: save(u) } : acc), { i: -1, s: 0 }).i;
+  const left = units.length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full sm:max-w-[420px] h-full sm:h-auto sm:max-h-[90dvh] bg-white sm:rounded-3xl overflow-hidden flex flex-col shadow-hx-lg">
+        {/* preview chrome */}
+        <div className="h-12 shrink-0 border-b border-hx-line flex items-center px-4 gap-2 bg-white">
+          <Eye className="w-4 h-4 text-hx-red" />
+          <span className="text-[13px] font-semibold">Buyer preview</span>
+          <span className="text-[11px] text-hx-muted">· how the page looks</span>
+          <button onClick={onClose} className="ml-auto w-8 h-8 rounded-full hover:bg-hx-bg inline-flex items-center justify-center text-hx-slate"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="overflow-y-auto">
+          {/* hero */}
+          <div className="relative h-[180px]" style={hero ? undefined : { backgroundImage: "repeating-linear-gradient(135deg,#F1E2D8 0 16px,#FAEFE7 16px 32px)" }}>
+            {hero ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={hero} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-hx-muted text-[11px] font-mono">[ add photos ]</div>
+            )}
+            <div className="absolute top-3 left-3 flex gap-1.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hx-red text-white text-[11px] font-semibold"><BadgeCheck className="w-3 h-3" /> RERA verified</span>
+            </div>
+          </div>
+
+          <div className="px-4 pb-6">
+            <div className="pt-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-[20px] font-bold tracking-tight">{name || "Project name"}</h1>
+                <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-hx-slate"><MapPin className="w-3.5 h-3.5" /> {locality || "Locality"}, {city}</div>
+                <div className="mt-0.5 text-[12px] text-hx-muted">{developer} · {bhk} · {facing}-facing</div>
+              </div>
+              <div className="num text-[20px] font-extrabold tracking-tight shrink-0">{range}</div>
+            </div>
+
+            {status !== "Live" && (
+              <div className="mt-3 rounded-lg bg-hx-warning/10 border border-hx-warning/30 px-3 py-2 text-[12px] text-hx-ink">
+                Status is <strong>{status}</strong> — buyers can only see this once it&apos;s set to <strong>Live</strong>.
+              </div>
+            )}
+
+            {/* pick your unit */}
+            <div className="mt-5 flex items-center gap-2 mb-2">
+              <span className="text-[12px] uppercase tracking-wider text-hx-muted font-medium">Pick your unit</span>
+              {left > 0 && (
+                <span className={`text-[10.5px] font-semibold rounded-full px-2 py-0.5 ${left <= 3 ? "bg-hx-red/10 text-hx-red" : "bg-hx-bg text-hx-slate"}`}>
+                  {left <= 3 ? `Only ${left} left` : `${left} available`}
+                </span>
+              )}
+            </div>
+
+            {offerNote && (
+              <div className="mb-2.5 rounded-xl bg-hx-red/[0.06] border border-hx-red/20 px-3.5 py-2.5 flex items-center gap-2 text-[12.5px] text-hx-ink">
+                <Flame className="w-4 h-4 text-hx-red shrink-0" /> <span className="font-medium">{offerNote}</span>
+              </div>
+            )}
+
+            {units.length === 0 && <div className="rounded-xl border border-hx-line p-4 text-[13px] text-hx-muted">Add a unit with a price to see it here.</div>}
+
+            <div className="space-y-2.5">
+              {units.map((u, i) => {
+                const sv = save(u);
+                const best = i === bestId && sv > 0;
+                return (
+                  <div key={i} className={`rounded-2xl border bg-white p-3.5 ${best ? "border-hx-red/40" : "border-hx-line"}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {best && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-hx-red text-white text-[9.5px] font-bold uppercase tracking-wide"><Flame className="w-2.5 h-2.5" /> Best deal</span>}
+                          <span className="text-[14px] font-bold">Floor {u.floor}</span>
+                          <span className="text-[12px] text-hx-muted">· {u.facing}-facing · {u.carpetSqft} sqft</span>
+                        </div>
+                        {u.tag && <span className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-hx-bg border border-hx-line text-[11px] text-hx-slate"><Tag className="w-3 h-3" /> {u.tag}</span>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        {sv > 0 && <div className="num text-[12px] text-hx-muted line-through">₹{u.listPriceLakh} L</div>}
+                        <div className="num text-[19px] font-extrabold tracking-tight leading-tight">₹{u.priceLakh} L</div>
+                        {sv > 0 && <div className="num text-[11px] font-bold text-hx-success">Save ₹{sv} L</div>}
+                      </div>
+                    </div>
+                    <div className="mt-3 w-full h-10 rounded-xl bg-hx-red text-white text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 opacity-90">
+                      <Lock className="w-4 h-4" /> {sv > 0 ? `Lock this price · save ₹${sv} L` : "Lock this price"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {amenities.length > 0 && (
+              <>
+                <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Amenities</div>
+                <div className="flex flex-wrap gap-2">
+                  {amenities.map((a) => (
+                    <span key={a} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-hx-bg border border-hx-line text-[12.5px] text-hx-slate"><Check className="w-3.5 h-3.5 text-hx-success" /> {a}</span>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="mt-5 rounded-xl border border-hx-line p-3 text-[11.5px] text-hx-muted leading-relaxed">
+              This is a preview built from what you&apos;ve typed{reraId ? ` · RERA ${reraId}` : ""}. Nothing is saved until you tap <strong className="text-hx-ink">Save</strong>.
+            </div>
           </div>
         </div>
       </div>
