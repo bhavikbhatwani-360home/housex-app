@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageSquare, CalendarPlus, BadgePercent, X, Check, Video, Loader2, CheckCircle2, Sunrise, Sun, Sunset, Footprints, Users, User, Briefcase, Navigation } from "lucide-react";
 
@@ -31,8 +31,18 @@ function nextDays(n: number) {
   return out;
 }
 
-export default function PropertyActions({ propertyId, propertyName, locality, priceMin }: { propertyId: string; propertyName: string; locality: string; priceMin: number }) {
+export default function PropertyActions({ propertyId, propertyName, locality, priceMin, whatsapp }: { propertyId: string; propertyName: string; locality: string; priceMin: number; whatsapp?: string }) {
   const [sheet, setSheet] = useState<null | "visit" | "offer">(null);
+
+  // pre-filled WhatsApp enquiry — in this market it often out-converts forms.
+  // The page URL is added after mount (it's not known during SSR).
+  const [pageUrl, setPageUrl] = useState("");
+  useEffect(() => setPageUrl(window.location.href), []);
+  const waHref = whatsapp
+    ? `https://wa.me/${whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(
+        `Hi! I'm interested in ${propertyName} (${locality}) on HouseX — ${pageUrl}`.trim()
+      )}`
+    : null;
 
   return (
     <>
@@ -41,6 +51,12 @@ export default function PropertyActions({ propertyId, propertyName, locality, pr
           <Link href="/chat" className="h-11 px-3.5 rounded-xl bg-white border border-hx-line text-[12.5px] font-semibold text-hx-ink inline-flex items-center justify-center gap-1.5 shrink-0">
             <MessageSquare className="w-4 h-4 text-hx-red" /> Ask AI
           </Link>
+          {waHref && (
+            <a href={waHref} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp"
+              className="h-11 w-11 rounded-xl bg-[#25D366] text-white inline-flex items-center justify-center shrink-0">
+              <WhatsAppIcon className="w-5 h-5" />
+            </a>
+          )}
           <button onClick={() => setSheet("visit")} className="h-11 flex-1 rounded-xl bg-white border border-hx-line text-[13px] font-semibold text-hx-ink inline-flex items-center justify-center gap-1.5">
             <CalendarPlus className="w-4 h-4" /> Book a visit
           </button>
@@ -53,6 +69,15 @@ export default function PropertyActions({ propertyId, propertyName, locality, pr
       {sheet === "visit" && <BookingSheet propertyId={propertyId} propertyName={propertyName} locality={locality} onClose={() => setSheet(null)} />}
       {sheet === "offer" && <OfferSheet propertyId={propertyId} propertyName={propertyName} priceMin={priceMin} onClose={() => setSheet(null)} />}
     </>
+  );
+}
+
+// lucide has no brand icons — minimal WhatsApp glyph
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12.04 2a9.9 9.9 0 0 0-8.51 14.94L2 22l5.2-1.49A9.9 9.9 0 1 0 12.04 2Zm0 18.06a8.1 8.1 0 0 1-4.13-1.13l-.3-.18-3.08.88.9-3.01-.2-.31a8.13 8.13 0 1 1 6.81 3.75Zm4.46-6.08c-.25-.12-1.45-.71-1.67-.8-.22-.08-.39-.12-.55.13-.16.24-.63.79-.77.95-.14.16-.28.18-.53.06-.24-.12-1.03-.38-1.96-1.21-.73-.65-1.22-1.45-1.36-1.7-.14-.24-.02-.37.1-.5.11-.1.25-.28.37-.42.12-.14.16-.24.24-.4.08-.17.04-.31-.02-.43-.06-.12-.55-1.31-.75-1.8-.2-.47-.4-.4-.55-.41h-.47c-.16 0-.43.06-.65.3-.22.25-.86.84-.86 2.05 0 1.2.88 2.37 1 2.53.12.16 1.72 2.63 4.18 3.69.58.25 1.04.4 1.4.52.59.18 1.12.16 1.54.1.47-.07 1.45-.6 1.65-1.17.2-.57.2-1.06.14-1.17-.06-.1-.22-.16-.47-.28Z" />
+    </svg>
   );
 }
 

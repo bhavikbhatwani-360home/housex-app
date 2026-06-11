@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft, BadgeCheck, MapPin, Sparkles, Check, Building2, Compass, Train,
-  Layers, Play, KeyRound, Briefcase, ExternalLink,
+  Layers, Play, KeyRound, Briefcase, ExternalLink, TrendingUp, Receipt, HelpCircle, ChevronDown,
   FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -11,6 +11,8 @@ import ShareButton from "./ShareButton";
 import PropertyActions from "./PropertyActions";
 import EmiCalculator from "./EmiCalculator";
 import UnitsBlock from "./UnitsBlock";
+import PhotoGallery from "./PhotoGallery";
+import SaveButton from "./SaveButton";
 
 export const dynamic = "force-dynamic";
 
@@ -78,10 +80,42 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   // listing 404s even on a direct link until a manager approves it.
   if (!p || p.status !== "Live") notFound();
 
+  // other live listings nearby — power the locality ₹/sqft average and "more in this area"
+  let others: { id: string; name: string; locality: string; bhk: string; priceMin: number; priceMax: number; carpetSqft: number; images: string[] }[] = [];
+  try {
+    others = await prisma.property.findMany({
+      where: { id: { not: p.id }, status: "Live", OR: [{ locality: p.locality }, { city: p.city }] },
+      select: { id: true, name: true, locality: true, bhk: true, priceMin: true, priceMax: true, carpetSqft: true, images: true },
+      take: 24,
+    });
+  } catch {
+    others = [];
+  }
+
   const range = p.priceMin === p.priceMax ? `₹${p.priceMin} L` : `₹${p.priceMin}–${p.priceMax} L`;
-  const perSqft = p.carpetSqft > 0 ? Math.round((p.priceMin * 100000) / p.carpetSqft).toLocaleString("en-IN") : null;
+  const perSqftNum = p.carpetSqft > 0 ? Math.round((p.priceMin * 100000) / p.carpetSqft) : null;
+  const perSqft = perSqftNum ? perSqftNum.toLocaleString("en-IN") : null;
+
+  // locality price context — average ₹/sqft across other live listings here
+  const peerRates = others
+    .filter((o) => o.locality === p.locality && o.carpetSqft > 0 && o.priceMin > 0)
+    .map((o) => (o.priceMin * 100000) / o.carpetSqft);
+  const localityAvg = peerRates.length >= 2 ? Math.round(peerRates.reduce((a, b) => a + b, 0) / peerRates.length) : null;
+  const vsAvgPct = localityAvg && perSqftNum ? Math.round(((perSqftNum - localityAvg) / localityAvg) * 100) : null;
+
+  // similar listings — same locality first, then same city
+  const similar = [...others].sort((a, b) => Number(b.locality === p.locality) - Number(a.locality === p.locality)).slice(0, 3);
+
+  // what you'll actually pay — Maharashtra: stamp duty ~6% (incl. metro cess),
+  // registration 1% capped at ₹30k, GST 5% only while under construction.
+  const isReady = /ready/i.test(p.possession || "");
+  const baseCost = p.priceMin * 100000;
+  const stampDuty = Math.round(baseCost * 0.06);
+  const registration = Math.min(Math.round(baseCost * 0.01), 30000);
+  const gst = isReady ? 0 : Math.round(baseCost * 0.05);
+  const allIn = baseCost + stampDuty + registration + gst;
+  const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
   const vid = youtubeId(p.videoUrl);
-  const hero = p.images[0] || null;
 
   const basics = [
     p.totalTowers ? `${p.totalTowers} towers` : null,
@@ -127,6 +161,68 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
     { icon: BadgeCheck, label: "RERA", value: p.reraId || "Registered" },
   ];
 
+  // FAQs answered from the listing's own facts — useful on-page and feeds the
+  // FAQPage structured data for Google.
+  const faqs = [
+    {
+      q: `What is the price of ${p.name}?`,
+      a: `${p.bhk} units are priced ${range}${perSqft ? ` (about ₹${perSqft}/sqft)` : ""}. ${p.units.length > 0 ? `${p.units.length} unit${p.units.length > 1 ? "s are" : " is"} available right now.` : "Request an offer for current availability."}`,
+    },
+    {
+      q: `Is ${p.name} RERA registered?`,
+      a: p.reraId ? `Yes — RERA registration ${p.reraId}. You can verify it on the MahaRERA portal.` : "Yes — this is a RERA-registered project, verified by HouseX.",
+    },
+    {
+      q: `When is possession of ${p.name}?`,
+      a: p.possession ? `Possession is ${/ready/i.test(p.possession) ? "ready — you can move in now" : `expected ${p.possession}`}.` : "Contact the developer for the possession timeline.",
+    },
+    {
+      q: `How far is ${p.name} from the station?`,
+      a: p.distanceToStationM > 0 ? `About ${p.distanceToStationM} m from the nearest railway station${p.distanceToStationM <= 1000 ? " — walkable" : ""}.` : "Contact the developer for connectivity details.",
+    },
+    ...(p.amenities.length
+      ? [{ q: `What amenities does ${p.name} have?`, a: `${p.amenities.join(", ")}.` }]
+      : []),
+  ];
+
+  // structured data: real-estate listing + FAQs (per the JSON-LD guide, plain
+  // script tags with < escaped)
+  const jsonLd = JSON.stringify([
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: p.name,
+      description: p.description || `${p.bhk} by ${p.developer} in ${p.locality}, ${p.city}. RERA-verified on HouseX.`,
+      image: p.images.slice(0, 4),
+      brand: { "@type": "Organization", name: p.developer },
+      offers: {
+        "@type": "AggregateOffer",
+        priceCurrency: "INR",
+        lowPrice: p.priceMin * 100000,
+        highPrice: p.priceMax * 100000,
+        offerCount: p.units.length || 1,
+        availability: "https://schema.org/InStock",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Residence",
+      name: p.name,
+      address: { "@type": "PostalAddress", addressLocality: p.locality, addressRegion: p.city, addressCountry: "IN" },
+      numberOfRooms: p.bhk,
+      floorSize: p.carpetSqft > 0 ? { "@type": "QuantitativeValue", value: p.carpetSqft, unitCode: "FTK" } : undefined,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqs.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
+  ]).replace(/</g, "\\u003c");
+
   return (
     <div className="min-h-dvh bg-white text-hx-ink pb-[88px]">
       <header className="sticky top-0 z-20 h-14 bg-white/90 backdrop-blur border-b border-hx-line flex items-center px-4 gap-3">
@@ -136,31 +232,16 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           <div className="text-[11px] text-hx-muted truncate">{p.developer}</div>
         </div>
         <span className="num text-[15px] font-extrabold tracking-tight shrink-0">{range}</span>
+        <SaveButton item={{ id: p.id, name: p.name, locality: p.locality, bhk: p.bhk, priceMin: p.priceMin, priceMax: p.priceMax, image: p.images[0] || null }} />
         <ShareButton title={`${p.name} — ${range} · ${p.bhk} in ${p.locality} · HouseX`} />
       </header>
 
+      {/* structured data for search engines */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+
       <div className="max-w-2xl mx-auto">
-        {/* hero */}
-        <div className="relative h-[210px] sm:h-[260px]" style={hero ? undefined : { backgroundImage: "repeating-linear-gradient(135deg,#F1E2D8 0 16px,#FAEFE7 16px 32px)" }}>
-          {hero ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={hero} alt={p.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-hx-muted text-[11px] font-mono">[ {p.name} · add photos ]</div>
-          )}
-          <div className="absolute top-3 left-3 flex gap-1.5">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hx-red text-white text-[11px] font-semibold"><BadgeCheck className="w-3 h-3" /> RERA verified</span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 text-hx-ink text-[11px] font-semibold">{p.status}</span>
-          </div>
-        </div>
-        {p.images.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 pt-3">
-            {p.images.slice(0, 8).map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src={src} alt="" className="w-20 h-16 rounded-lg object-cover border border-hx-line shrink-0" />
-            ))}
-          </div>
-        )}
+        {/* hero + tappable gallery */}
+        <PhotoGallery images={p.images} name={p.name} />
 
         <div className="px-5">
           {/* title + price */}
@@ -176,10 +257,22 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
+          {/* how this price sits in the locality, from HouseX's own live listings */}
+          {vsAvgPct !== null && localityAvg && (
+            <div className={`mt-3 rounded-xl border px-3.5 py-2.5 flex items-center gap-2.5 text-[12.5px] ${vsAvgPct < 0 ? "border-hx-success/30 bg-hx-success/5" : "border-hx-line bg-hx-bg/60"}`}>
+              <TrendingUp className={`w-4 h-4 shrink-0 ${vsAvgPct < 0 ? "text-hx-success" : "text-hx-slate"}`} />
+              <span className="text-hx-ink">
+                {vsAvgPct === 0
+                  ? <>Priced right at the <strong>{p.locality}</strong> average on HouseX (₹{localityAvg.toLocaleString("en-IN")}/sqft)</>
+                  : <>About <strong className={vsAvgPct < 0 ? "text-hx-success" : ""}>{Math.abs(vsAvgPct)}% {vsAvgPct < 0 ? "below" : "above"}</strong> the {p.locality} average of ₹{localityAvg.toLocaleString("en-IN")}/sqft on HouseX</>}
+              </span>
+            </div>
+          )}
+
           {/* brochure */}
           {p.brochureUrl && (
             <a href={p.brochureUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white border border-hx-line text-[13px] font-semibold text-hx-ink hover:bg-hx-bg">
-              <FileText className="w-4 h-4 text-hx-red" /> Download brochure
+              <FileText className="w-4 h-4 text-hx-red" /> View brochure
             </a>
           )}
 
@@ -214,6 +307,27 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
           {/* affordability — interactive EMI */}
           <EmiCalculator priceLakh={p.priceMin} />
+
+          {/* what you'll actually pay — sticker price is never the full story */}
+          {p.priceMin > 0 && (
+            <div className="mt-4 rounded-2xl border border-hx-line p-4">
+              <div className="flex items-center gap-1.5 text-[12px] font-semibold text-hx-red mb-3"><Receipt className="w-3.5 h-3.5" /> What you&apos;ll actually pay</div>
+              <div className="space-y-2 text-[13px]">
+                <div className="flex items-center justify-between"><span className="text-hx-slate">Property price{p.priceMin !== p.priceMax ? " (from)" : ""}</span><span className="num font-semibold">{inr(baseCost)}</span></div>
+                <div className="flex items-center justify-between"><span className="text-hx-slate">Stamp duty (~6%)</span><span className="num font-semibold">{inr(stampDuty)}</span></div>
+                <div className="flex items-center justify-between"><span className="text-hx-slate">Registration (1%, max ₹30k)</span><span className="num font-semibold">{inr(registration)}</span></div>
+                <div className="flex items-center justify-between">
+                  <span className="text-hx-slate">GST {isReady ? "" : "(5%, under construction)"}</span>
+                  {gst > 0 ? <span className="num font-semibold">{inr(gst)}</span> : <span className="text-[12px] font-semibold text-hx-success">None — ready to move</span>}
+                </div>
+                <div className="pt-2 mt-1 border-t border-hx-line flex items-center justify-between">
+                  <span className="font-semibold">All-in estimate</span>
+                  <span className="num text-[16px] font-extrabold tracking-tight">{inr(allIn)}</span>
+                </div>
+              </div>
+              <p className="mt-2.5 text-[11px] text-hx-muted">Indicative for Maharashtra — excludes society charges, parking and maintenance deposits. Confirm exact figures with the developer.</p>
+            </div>
+          )}
 
           {/* key facts */}
           <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Key facts</div>
@@ -349,6 +463,50 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             />
           </div>
 
+          {/* common questions — answered from the listing itself */}
+          <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Common questions</div>
+          <div className="rounded-2xl border border-hx-line divide-y divide-hx-line overflow-hidden">
+            {faqs.map((f) => (
+              <details key={f.q} className="group">
+                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer list-none text-[13.5px] font-medium hover:bg-hx-bg/50">
+                  <HelpCircle className="w-4 h-4 text-hx-red shrink-0" />
+                  <span className="flex-1">{f.q}</span>
+                  <ChevronDown className="w-4 h-4 text-hx-muted shrink-0 transition-transform group-open:rotate-180" />
+                </summary>
+                <p className="px-4 pb-3.5 pl-10 text-[13px] text-hx-slate leading-relaxed">{f.a}</p>
+              </details>
+            ))}
+          </div>
+
+          {/* more in this area — keep the buyer browsing instead of dead-ending */}
+          {similar.length > 0 && (
+            <>
+              <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">More in {similar.some((s) => s.locality === p.locality) ? p.locality : p.city}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {similar.map((s) => {
+                  const sRange = s.priceMin === s.priceMax ? `₹${s.priceMin} L` : `₹${s.priceMin}–${s.priceMax} L`;
+                  return (
+                    <Link key={s.id} href={`/property/${s.id}`} className="rounded-2xl border border-hx-line overflow-hidden hover:border-hx-red/40 transition-colors">
+                      <div className="h-[110px] bg-hx-bg">
+                        {s.images[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={s.images[0]} alt={s.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full" style={{ backgroundImage: "repeating-linear-gradient(135deg,#F1E2D8 0 12px,#FAEFE7 12px 24px)" }} />
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <div className="text-[13.5px] font-semibold truncate">{s.name}</div>
+                        <div className="text-[11.5px] text-hx-muted truncate">{s.locality} · {s.bhk}</div>
+                        <div className="num text-[13.5px] font-bold mt-1">{sRange}</div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           {/* developer claim — only on unclaimed (seeded) listings */}
           {!p.developerId && (
             <Link href={`/claim/${p.id}`} className="mt-3 rounded-2xl border border-hx-line bg-hx-bg/60 p-4 flex items-center gap-3 hover:border-hx-red/40 transition-colors">
@@ -364,7 +522,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* sticky actions — book a visit / request offer directly on this listing */}
-      <PropertyActions propertyId={p.id} propertyName={p.name} locality={p.locality} priceMin={p.priceMin} />
+      <PropertyActions
+        propertyId={p.id} propertyName={p.name} locality={p.locality} priceMin={p.priceMin}
+        whatsapp={process.env.HOUSEX_WHATSAPP_NUMBER || ""}
+      />
     </div>
   );
 }
