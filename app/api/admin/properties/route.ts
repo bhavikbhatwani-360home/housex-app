@@ -1,5 +1,6 @@
 import { isAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/db";
+import { normalizeStage } from "@/lib/stage";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,7 @@ export async function POST(req: Request) {
   const amenities = Array.isArray(body.amenities) ? body.amenities.map((a) => String(a)).filter(Boolean) : [];
   const description = s(body.description) || null;
   const possession = s(body.possession) || null;
+  const stage = normalizeStage(s(body.stage), possession);
   const videoUrl = s(body.videoUrl) || null;
   const images = Array.isArray(body.images) ? body.images.map((x) => String(x).trim()).filter(Boolean) : [];
   const floorPlans = Array.isArray(body.floorPlans) ? body.floorPlans.map((x) => String(x).trim()).filter(Boolean) : [];
@@ -82,7 +84,7 @@ export async function POST(req: Request) {
     const prop = await prisma.property.create({
       data: {
         name, developer: developerName, developerId, city, locality, bhk, facing, carpetSqft, distanceToStationM,
-        reraId, status, brochureUrl, amenities, priceMin, priceMax,
+        reraId, status, stage, brochureUrl, amenities, priceMin, priceMax,
         description, possession, videoUrl, images, floorPlans, nearby, totalTowers, totalUnits, projectArea, totalFloors,
         offerNote: s(body.offerNote) || null,
         units: { create: units },

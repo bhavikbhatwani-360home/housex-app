@@ -1,5 +1,6 @@
 import { isAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/db";
+import { normalizeStage } from "@/lib/stage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -139,6 +140,7 @@ export async function POST(req: Request) {
           distanceToStationM: 0,
           reraId: r.reraId,
           possession: r.possession || null,
+          stage: normalizeStage(undefined, r.possession),
           totalTowers: r.totalTowers > 0 ? r.totalTowers : null,
           totalFloors: r.totalFloors || null,
           status: "Pending", // never auto-live — manager verifies price first

@@ -68,6 +68,7 @@ model Property {
   distanceToStationM Int
   reraId             String
   status             String     @default("Live")
+  stage              String     @default("Under construction") // New launch | Under construction | Ready to move
   amenities          String[]   @default([])
   brochureUrl        String?
   description        String?

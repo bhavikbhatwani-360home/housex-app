@@ -22,7 +22,7 @@ export async function getInventoryContext(): Promise<string | null> {
           .join("; ");
         const amen = p.amenities.length ? ` Amenities: ${p.amenities.join(", ")}.` : "";
         const broch = p.brochureUrl ? " Brochure available." : "";
-        return `- ${p.name} by ${p.developer} — ${p.locality}, ${p.city}. ${p.bhk}, ₹${p.priceMin}–${p.priceMax}L, ${p.facing}-facing base, ${p.distanceToStationM} m from station, RERA ${p.reraId}, ${p.status}. Available units: ${units}.${amen}${broch}`;
+        return `- ${p.name} by ${p.developer} — ${p.locality}, ${p.city}. ${p.bhk}, ₹${p.priceMin}–${p.priceMax}L, ${p.facing}-facing base, ${p.distanceToStationM} m from station, RERA ${p.reraId}, ${p.stage}${p.possession ? ` (possession ${p.possession})` : ""}. Available units: ${units}.${amen}${broch}`;
       })
       .join("\n");
   } catch {

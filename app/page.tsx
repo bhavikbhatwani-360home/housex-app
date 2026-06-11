@@ -5,6 +5,8 @@ import {
   PhoneOff, BadgeCheck, Smartphone,
 } from "lucide-react";
 import HeroSearch from "./HeroSearch";
+import { prisma } from "@/lib/db";
+import { STAGES, STAGE_BADGE } from "@/lib/stage";
 
 export const metadata: Metadata = {
   title: "HouseX — Stop scrolling listings. Just talk to HouseX AI.",
@@ -48,7 +50,24 @@ const BENEFITS = [
   },
 ];
 
-export default function Landing() {
+export const dynamic = "force-dynamic";
+
+const STAGE_CARDS: Record<string, { emoji: string; line: string }> = {
+  "Ready to move": { emoji: "🔑", line: "Skip rent — move in now. No GST." },
+  "Under construction": { emoji: "🏗️", line: "Pay less today, staged payments." },
+  "New launch": { emoji: "🚀", line: "Lowest prices, best unit choice." },
+};
+
+export default async function Landing() {
+  // live counts per stage — best-effort; cards still render without the DB
+  let stageCounts: Record<string, number> = {};
+  try {
+    const grouped = await prisma.property.groupBy({ by: ["stage"], where: { status: "Live" }, _count: true });
+    stageCounts = Object.fromEntries(grouped.map((g) => [g.stage, g._count]));
+  } catch {
+    stageCounts = {};
+  }
+
   return (
     <div className="min-h-dvh bg-white text-hx-ink">
       {/* ── nav ── */}
@@ -83,6 +102,23 @@ export default function Landing() {
         <p className="mt-3 text-[12px] text-hx-muted">
           Try: &quot;3BHK in Vasai with parking&quot; · &quot;₹1 Cr flat near a metro&quot; · &quot;Ready to move in Borivali&quot;
         </p>
+
+        {/* browse by stage — the buyer's first real question: can I move in? */}
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[720px] mx-auto text-left">
+          {STAGES.map((s) => (
+            <Link key={s} href={`/properties?stage=${encodeURIComponent(s)}`} className="rounded-2xl border border-hx-line bg-white p-4 hover:border-hx-red/40 transition-colors">
+              <div className="flex items-center justify-between">
+                <span className="text-[22px]">{STAGE_CARDS[s].emoji}</span>
+                {(stageCounts[s] ?? 0) > 0 && (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold num ${STAGE_BADGE[s]}`}>{stageCounts[s]} project{stageCounts[s] > 1 ? "s" : ""}</span>
+                )}
+              </div>
+              <div className="mt-2 text-[14.5px] font-semibold tracking-tight">{s}</div>
+              <div className="mt-0.5 text-[12px] text-hx-muted leading-relaxed">{STAGE_CARDS[s].line}</div>
+              <div className="mt-2 text-[12px] font-semibold text-hx-red inline-flex items-center gap-1">Browse <ArrowRight className="w-3.5 h-3.5" /></div>
+            </Link>
+          ))}
+        </div>
 
         {/* trust strip */}
         <div className="mt-10 pt-6 border-t border-hx-line/70 max-w-[720px] mx-auto grid grid-cols-3 gap-4">

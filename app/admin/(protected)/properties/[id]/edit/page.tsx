@@ -38,6 +38,7 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
     brochureUrl: p.brochureUrl ?? "",
     videoUrl: p.videoUrl ?? "",
     possession: p.possession ?? "",
+    stage: p.stage,
     description: p.description ?? "",
     images: p.images.join("\n"),
     offerNote: p.offerNote ?? "",

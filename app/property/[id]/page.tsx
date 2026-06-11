@@ -8,6 +8,7 @@ import {
   FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { STAGE_BADGE } from "@/lib/stage";
 import ShareButton from "./ShareButton";
 import PropertyActions from "./PropertyActions";
 import EmiCalculator from "./EmiCalculator";
@@ -82,11 +83,11 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   if (!p || p.status !== "Live") notFound();
 
   // other live listings nearby — power the locality ₹/sqft average and "more in this area"
-  let others: { id: string; name: string; locality: string; bhk: string; priceMin: number; priceMax: number; carpetSqft: number; images: string[] }[] = [];
+  let others: { id: string; name: string; locality: string; bhk: string; stage: string; priceMin: number; priceMax: number; carpetSqft: number; images: string[] }[] = [];
   try {
     others = await prisma.property.findMany({
       where: { id: { not: p.id }, status: "Live", OR: [{ locality: p.locality }, { city: p.city }] },
-      select: { id: true, name: true, locality: true, bhk: true, priceMin: true, priceMax: true, carpetSqft: true, images: true },
+      select: { id: true, name: true, locality: true, bhk: true, stage: true, priceMin: true, priceMax: true, carpetSqft: true, images: true },
       take: 24,
     });
   } catch {
@@ -254,7 +255,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           <div className="pt-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-[22px] font-bold tracking-tight">{p.name}</h1>
-              <div className="mt-1 flex items-center gap-1.5 text-[13px] text-hx-slate"><MapPin className="w-3.5 h-3.5" /> {p.locality}, {p.city}</div>
+              <div className="mt-1 flex items-center gap-1.5 text-[13px] text-hx-slate flex-wrap">
+                <MapPin className="w-3.5 h-3.5" /> {p.locality}, {p.city}
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${STAGE_BADGE[p.stage] || "bg-hx-bg text-hx-slate"}`}>{p.stage}</span>
+              </div>
               {basics.length > 0 && <div className="mt-1.5 text-[12px] text-hx-muted">{basics.join(" · ")}</div>}
             </div>
             <div className="text-right shrink-0">
@@ -537,6 +541,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
                       <div className="p-3">
                         <div className="text-[13.5px] font-semibold truncate">{s.name}</div>
                         <div className="text-[11.5px] text-hx-muted truncate">{s.locality} · {s.bhk}</div>
+                        <span className={`mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${STAGE_BADGE[s.stage] || "bg-hx-bg text-hx-slate"}`}>{s.stage}</span>
                         <div className="num text-[13.5px] font-bold mt-1">{sRange}</div>
                       </div>
                     </Link>

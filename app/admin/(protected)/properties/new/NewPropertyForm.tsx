@@ -10,7 +10,7 @@ type DevOption = { id: string; company: string };
 type FormState = {
   name: string; developer: string; city: string; locality: string; bhk: string; facing: string;
   carpetSqft: string; distanceToStationM: string; reraId: string; status: string; amenities: string; brochureUrl: string;
-  videoUrl: string; possession: string; description: string; images: string; offerNote: string;
+  videoUrl: string; possession: string; stage: string; description: string; images: string; offerNote: string;
   totalTowers: string; totalUnits: string; projectArea: string; totalFloors: string; floorPlans: string; nearby: string;
 };
 
@@ -21,7 +21,7 @@ const STATUSES = ["Live", "Pending", "Draft"];
 const EMPTY_FORM: FormState = {
   name: "", developer: "", city: "Mumbai (MMR)", locality: "", bhk: "2 BHK", facing: "East",
   carpetSqft: "", distanceToStationM: "", reraId: "", status: "Live", amenities: "", brochureUrl: "",
-  videoUrl: "", possession: "", description: "", images: "", offerNote: "",
+  videoUrl: "", possession: "", stage: "Under construction", description: "", images: "", offerNote: "",
   totalTowers: "", totalUnits: "", projectArea: "", totalFloors: "", floorPlans: "", nearby: "",
 };
 
@@ -374,6 +374,17 @@ export default function NewPropertyForm({
             <Grid>
               <Input label="Video tour — YouTube link" value={f.videoUrl} onChange={set("videoUrl")} placeholder="https://youtube.com/watch?v=…" full />
               <Input label="Possession" value={f.possession} onChange={set("possession")} placeholder="Ready to move / Dec 2026" />
+              <div className="sm:col-span-2">
+                <span className="text-[12px] font-medium text-hx-slate mb-1.5 block">Project stage — buyers filter by this</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {["New launch", "Under construction", "Ready to move"].map((st) => (
+                    <button key={st} type="button" onClick={() => setF((p) => ({ ...p, stage: st }))}
+                      className={`h-10 rounded-lg border text-[12.5px] font-semibold px-1 ${f.stage === st ? "border-hx-red bg-hx-red/5 text-hx-red" : "border-hx-line bg-white text-hx-slate"}`}>
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </Grid>
             <Textarea label="Description" value={f.description} onChange={(v) => setF((p) => ({ ...p, description: v }))} rows={3} placeholder="A short overview buyers will read…" />
 

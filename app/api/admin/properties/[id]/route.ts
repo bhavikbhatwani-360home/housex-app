@@ -1,5 +1,6 @@
 import { isAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/db";
+import { normalizeStage } from "@/lib/stage";
 
 export const runtime = "nodejs";
 
@@ -113,6 +114,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           name, developer: developerName, developerId, locality, bhk, facing, carpetSqft, distanceToStationM,
           reraId: s(body.reraId), status, brochureUrl: s(body.brochureUrl) || null, amenities, priceMin, priceMax,
           description: s(body.description) || null, possession: s(body.possession) || null, videoUrl: s(body.videoUrl) || null,
+          stage: normalizeStage(s(body.stage), s(body.possession)),
           images, floorPlans, nearby,
           totalTowers: n(body.totalTowers) > 0 ? Math.trunc(n(body.totalTowers)) : null,
           totalUnits: n(body.totalUnits) > 0 ? Math.trunc(n(body.totalUnits)) : null,
