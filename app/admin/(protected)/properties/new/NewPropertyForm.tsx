@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, X, Eye, RotateCcw, Flame, Tag, MapPin, BadgeCheck, Lock, Check } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, X, Eye, RotateCcw, Flame, Tag, MapPin, BadgeCheck, Lock, Check, Star, ZoomIn, FileText, ExternalLink, Play, Image as ImageIcon } from "lucide-react";
 
 type UnitRow = { floor: string; priceLakh: string; listPriceLakh: string; tag: string; facing: string; carpetSqft: string };
 type DevOption = { id: string; company: string };
@@ -45,12 +45,16 @@ export default function NewPropertyForm({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null); // tap-to-enlarge
 
   // ── photos & floor plans, uploaded straight to the listing ──
   const photoRef = useRef<HTMLInputElement>(null);
   const planRef = useRef<HTMLInputElement>(null);
+  const broRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [plans, setPlans] = useState<string[]>([]);
+  const [broBusy, setBroBusy] = useState(false);
+  const [broErr, setBroErr] = useState("");
 
   // ── draft auto-save (so nothing is ever lost if the phone reloads the page,
   //    the camera kills the tab, or a save fails). Restored on next visit. ──
@@ -140,6 +144,45 @@ export default function NewPropertyForm({
     }
   };
 
+  // move a photo to the front so it becomes the cover buyers see first
+  const makeCover = (i: number) =>
+    setPhotos((p) => (i <= 0 ? p : [p[i], ...p.slice(0, i), ...p.slice(i + 1)]));
+
+  // read a file as a data URL (brochure PDFs aren't resized like photos)
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error("read"));
+      r.readAsDataURL(file);
+    });
+
+  // Brochure upload: PDFs need Blob storage; image brochures can fall back inline.
+  const uploadBrochure = async (file: File | undefined) => {
+    if (!file) return;
+    setBroErr(""); setBroBusy(true);
+    try {
+      const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+      if (file.size > 25 * 1024 * 1024) { setBroErr("That file is over 25 MB — please use a smaller brochure."); return; }
+      const data = await fileToDataUrl(file);
+      const res = await fetch("/api/admin/upload", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ images: [data] }),
+      });
+      const j = await res.json();
+      const url: string | undefined = j?.urls?.[0];
+      if (url && (j.hosted || !isPdf)) {
+        setF((p) => ({ ...p, brochureUrl: url }));
+      } else {
+        setBroErr("PDF upload needs file storage turned on. For now, paste a brochure link below.");
+      }
+    } catch {
+      setBroErr("Couldn't upload the brochure — try again or paste a link below.");
+    } finally {
+      setBroBusy(false);
+      if (broRef.current) broRef.current.value = "";
+    }
+  };
+
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF((p) => ({ ...p, [k]: e.target.value }));
 
@@ -158,6 +201,21 @@ export default function NewPropertyForm({
   const devLabel = developerId
     ? developers.find((d) => d.id === developerId)?.company || ""
     : f.developer || "Developer";
+
+  // ── "ready to publish" checklist — what a listing needs before it can go Live ──
+  const hasPricedUnit = units.some((u) => Number(u.priceLakh) > 0);
+  const hasDeveloper = Boolean(developerId) || f.developer.trim().length > 0;
+  const checklist = [
+    { label: "Project name", ok: f.name.trim().length > 0, need: true },
+    { label: "Locality", ok: f.locality.trim().length > 0, need: true },
+    { label: "Developer", ok: hasDeveloper, need: true },
+    { label: "A unit with a price", ok: hasPricedUnit, need: true },
+    { label: "At least one photo", ok: photos.length > 0 || f.images.trim().length > 0, need: true },
+    { label: "RERA number", ok: f.reraId.trim().length > 0, need: false },
+    { label: "Cover-worthy: 3+ photos", ok: photos.length >= 3, need: false },
+  ];
+  const missingRequired = checklist.filter((c) => c.need && !c.ok);
+  const readyToLive = missingRequired.length === 0;
 
   // Upload brochure photos to blob storage (if configured) and get back URLs;
   // falls back to the data URLs unchanged if storage isn't set up.
@@ -339,25 +397,55 @@ export default function NewPropertyForm({
 
             {/* ── photo upload ── */}
             <div className="mt-3.5">
-              <span className="text-[12px] font-medium text-hx-slate mb-1.5 block">Photos {photos.length > 0 && <span className="text-hx-muted">· {photos.length}</span>}</span>
+              <span className="text-[12px] font-medium text-hx-slate mb-1.5 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-hx-red" /> Photos {photos.length > 0 && <span className="text-hx-success font-semibold">· {photos.length} added ✓</span>}
+              </span>
               <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => addImages(e.target.files, "photos")} className="hidden" />
               <button type="button" onClick={() => photoRef.current?.click()} disabled={imgBusy}
                 className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-50">
-                {imgBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />} Upload photos
+                {imgBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />} {photos.length ? "Add more" : "Upload photos"}
               </button>
-              <span className="ml-2 text-[11px] text-hx-muted">JPG / PNG — the first one is the cover</span>
-              {photos.length > 0 && <ThumbStrip label="" srcs={photos} onRemove={(i) => setPhotos((p) => p.filter((_, j) => j !== i))} />}
+              <span className="ml-2 text-[11px] text-hx-muted">JPG / PNG — tap a photo to enlarge; star = cover</span>
+              {photos.length > 0 && (
+                <MediaGrid srcs={photos} onRemove={(i) => setPhotos((p) => p.filter((_, j) => j !== i))} onView={setLightbox} onMakeCover={makeCover} showCover />
+              )}
             </div>
 
             {/* ── floor plan upload ── */}
             <div className="mt-4">
-              <span className="text-[12px] font-medium text-hx-slate mb-1.5 block">Floor plans {plans.length > 0 && <span className="text-hx-muted">· {plans.length}</span>}</span>
+              <span className="text-[12px] font-medium text-hx-slate mb-1.5 block">Floor plans {plans.length > 0 && <span className="text-hx-success font-semibold">· {plans.length} added ✓</span>}</span>
               <input ref={planRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => addImages(e.target.files, "plans")} className="hidden" />
               <button type="button" onClick={() => planRef.current?.click()} disabled={imgBusy}
                 className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-hx-line text-hx-slate text-[13px] font-semibold hover:bg-hx-bg disabled:opacity-50">
-                {imgBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />} Upload floor plans
+                {imgBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />} {plans.length ? "Add more" : "Upload floor plans"}
               </button>
-              {plans.length > 0 && <ThumbStrip label="" srcs={plans} onRemove={(i) => setPlans((p) => p.filter((_, j) => j !== i))} />}
+              {plans.length > 0 && (
+                <MediaGrid srcs={plans} onRemove={(i) => setPlans((p) => p.filter((_, j) => j !== i))} onView={setLightbox} />
+              )}
+            </div>
+
+            {/* ── brochure upload ── */}
+            <div className="mt-4">
+              <span className="text-[12px] font-medium text-hx-slate mb-1.5 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-hx-red" /> Brochure (PDF or photo)</span>
+              <input ref={broRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(e) => uploadBrochure(e.target.files?.[0])} className="hidden" />
+              {f.brochureUrl ? (
+                <div className="flex items-center gap-2 rounded-lg border border-hx-line bg-hx-bg/60 px-3 py-2">
+                  <FileText className="w-4 h-4 text-hx-red shrink-0" />
+                  <span className="text-[12.5px] font-medium truncate flex-1">Brochure attached</span>
+                  <a href={f.brochureUrl} target="_blank" rel="noopener noreferrer" className="text-[12px] font-semibold text-hx-red inline-flex items-center gap-1 shrink-0"><ExternalLink className="w-3.5 h-3.5" /> View</a>
+                  <button type="button" onClick={() => setF((p) => ({ ...p, brochureUrl: "" }))} className="w-7 h-7 rounded-lg text-hx-muted hover:text-hx-danger inline-flex items-center justify-center shrink-0"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              ) : (
+                <>
+                  <button type="button" onClick={() => broRef.current?.click()} disabled={broBusy}
+                    className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-hx-line text-hx-slate text-[13px] font-semibold hover:bg-hx-bg disabled:opacity-50">
+                    {broBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} Upload brochure
+                  </button>
+                  <span className="ml-2 text-[11px] text-hx-muted">or paste a link below</span>
+                  <input value={f.brochureUrl} onChange={set("brochureUrl")} placeholder="https://…/brochure.pdf" className="mt-2 w-full h-10 px-3 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50" />
+                </>
+              )}
+              {broErr && <p className="mt-1.5 text-[12px] text-hx-warning">{broErr}</p>}
             </div>
           </Card>
 
@@ -375,9 +463,31 @@ export default function NewPropertyForm({
             <Grid>
               <Input label="RERA number" value={f.reraId} onChange={set("reraId")} placeholder="P51700012345" />
               <Select label="Status" value={f.status} onChange={set("status")} options={STATUSES} />
-              <Input label="Brochure URL (optional)" value={f.brochureUrl} onChange={set("brochureUrl")} placeholder="https://…" full />
               <Input label="Amenities (comma separated)" value={f.amenities} onChange={set("amenities")} placeholder="Covered parking, Gym, Kids' play area" full />
             </Grid>
+          </Card>
+
+          <Card title="Ready to publish?">
+            <div className={`rounded-lg px-3 py-2 mb-3 text-[12.5px] font-medium ${readyToLive ? "bg-hx-success/10 text-hx-success" : "bg-hx-warning/10 text-hx-ink"}`}>
+              {readyToLive
+                ? "All set — this listing can go Live."
+                : `${missingRequired.length} thing${missingRequired.length > 1 ? "s" : ""} still needed before it can go Live.`}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+              {checklist.map((c) => (
+                <div key={c.label} className="flex items-center gap-2 text-[12.5px]">
+                  {c.ok
+                    ? <Check className="w-4 h-4 text-hx-success shrink-0" />
+                    : <span className={`w-4 h-4 rounded-full border shrink-0 ${c.need ? "border-hx-danger/60" : "border-hx-line"}`} />}
+                  <span className={c.ok ? "text-hx-slate" : c.need ? "text-hx-ink font-medium" : "text-hx-muted"}>
+                    {c.label}{!c.need && <span className="text-hx-muted font-normal"> · nice to have</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {f.status === "Live" && !readyToLive && (
+              <p className="mt-3 text-[12px] text-hx-warning">You&apos;ve set status to Live, but it&apos;ll be rejected until the required items above are filled.</p>
+            )}
           </Card>
 
           {error && <p className="text-[13px] text-hx-danger">{error}</p>}
@@ -415,13 +525,24 @@ export default function NewPropertyForm({
           onClose={() => setShowPreview(false)}
           name={f.name} developer={devLabel} locality={f.locality} city={f.city}
           bhk={f.bhk} facing={f.facing} reraId={f.reraId} status={f.status}
-          offerNote={f.offerNote} hero={photos[0] || null}
+          offerNote={f.offerNote}
+          photos={[...photos, ...f.images.split("\n").map((x) => x.trim()).filter(Boolean)]}
+          plans={[...plans, ...f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean)]}
+          videoUrl={f.videoUrl} brochureUrl={f.brochureUrl} description={f.description}
           amenities={f.amenities.split(",").map((a) => a.trim()).filter(Boolean)}
           units={units.map((u) => ({
             floor: Number(u.floor) || 0, facing: u.facing, carpetSqft: Number(u.carpetSqft) || 0,
             priceLakh: Number(u.priceLakh) || 0, listPriceLakh: Number(u.listPriceLakh) || 0, tag: u.tag.trim(),
           })).filter((u) => u.priceLakh > 0)}
         />
+      )}
+
+      {lightbox && (
+        <div className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          <button type="button" onClick={() => setLightbox(null)} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white inline-flex items-center justify-center"><X className="w-5 h-5" /></button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightbox} alt="" className="max-w-full max-h-full object-contain rounded-xl" onClick={(e) => e.stopPropagation()} />
+        </div>
       )}
     </div>
   );
@@ -431,12 +552,19 @@ export default function NewPropertyForm({
 // on the public property page — built live from the form, so Pawan can check it
 // before saving (and on his phone).
 type PUnit = { floor: number; facing: string; carpetSqft: number; priceLakh: number; listPriceLakh: number; tag: string };
+function ytId(url: string): string | null {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
 function BuyerPreview({
-  onClose, name, developer, locality, city, bhk, facing, reraId, status, offerNote, hero, amenities, units,
+  onClose, name, developer, locality, city, bhk, facing, reraId, status, offerNote, photos, plans, videoUrl, brochureUrl, description, amenities, units,
 }: {
   onClose: () => void; name: string; developer: string; locality: string; city: string; bhk: string; facing: string;
-  reraId: string; status: string; offerNote: string; hero: string | null; amenities: string[]; units: PUnit[];
+  reraId: string; status: string; offerNote: string; photos: string[]; plans: string[]; videoUrl: string; brochureUrl: string;
+  description: string; amenities: string[]; units: PUnit[];
 }) {
+  const hero = photos[0] || null;
+  const vid = videoUrl ? ytId(videoUrl) : null;
   const prices = units.map((u) => u.priceLakh).filter((x) => x > 0);
   const lo = prices.length ? Math.min(...prices) : 0;
   const hi = prices.length ? Math.max(...prices) : 0;
@@ -471,6 +599,16 @@ function BuyerPreview({
             </div>
           </div>
 
+          {/* gallery strip — every photo Pawan uploaded, as buyers swipe them */}
+          {photos.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 pt-3">
+              {photos.slice(0, 8).map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={src} alt="" className="w-20 h-16 rounded-lg object-cover border border-hx-line shrink-0" />
+              ))}
+            </div>
+          )}
+
           <div className="px-4 pb-6">
             <div className="pt-4 flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -484,6 +622,28 @@ function BuyerPreview({
             {status !== "Live" && (
               <div className="mt-3 rounded-lg bg-hx-warning/10 border border-hx-warning/30 px-3 py-2 text-[12px] text-hx-ink">
                 Status is <strong>{status}</strong> — buyers can only see this once it&apos;s set to <strong>Live</strong>.
+              </div>
+            )}
+
+            {brochureUrl && (
+              <a href={brochureUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white border border-hx-line text-[13px] font-semibold text-hx-ink">
+                <FileText className="w-4 h-4 text-hx-red" /> Download brochure
+              </a>
+            )}
+
+            {vid && (
+              <div className="mt-4">
+                <div className="flex items-center gap-1.5 text-[12px] font-semibold text-hx-red mb-2"><Play className="w-3.5 h-3.5" /> Video tour</div>
+                <div className="relative w-full rounded-2xl overflow-hidden border border-hx-line" style={{ aspectRatio: "16 / 9" }}>
+                  <iframe src={`https://www.youtube.com/embed/${vid}`} title="tour" className="absolute inset-0 w-full h-full" allowFullScreen />
+                </div>
+              </div>
+            )}
+
+            {description && (
+              <div className="mt-4">
+                <div className="text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-1.5">Overview</div>
+                <p className="text-[13.5px] text-hx-slate leading-relaxed whitespace-pre-wrap">{description}</p>
               </div>
             )}
 
@@ -533,6 +693,18 @@ function BuyerPreview({
                 );
               })}
             </div>
+
+            {plans.length > 0 && (
+              <>
+                <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Floor plans</div>
+                <div className="grid grid-cols-2 gap-3">
+                  {plans.map((src, i) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={i} src={src} alt={`Floor plan ${i + 1}`} className="w-full h-40 object-contain rounded-xl border border-hx-line bg-hx-bg" />
+                  ))}
+                </div>
+              </>
+            )}
 
             {amenities.length > 0 && (
               <>
@@ -591,22 +763,37 @@ function Textarea({ label, value, onChange, rows, placeholder }: { label: string
     </label>
   );
 }
-function ThumbStrip({ label, srcs, onRemove }: { label: string; srcs: string[]; onRemove: (i: number) => void }) {
+// Grid of uploaded media — tap to enlarge, remove, and (for photos) set the cover.
+function MediaGrid({
+  srcs, onRemove, onView, onMakeCover, showCover,
+}: {
+  srcs: string[]; onRemove: (i: number) => void; onView: (src: string) => void;
+  onMakeCover?: (i: number) => void; showCover?: boolean;
+}) {
   return (
-    <div className="mt-3.5">
-      <span className="text-[12px] font-medium text-hx-slate mb-1.5 block">{label}</span>
-      <div className="flex flex-wrap gap-2">
-        {srcs.map((src, i) => (
-          <div key={i} className="relative w-[88px] h-[66px] rounded-lg overflow-hidden border border-hx-line group">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt="" className="w-full h-full object-cover" />
-            <button type="button" onClick={() => onRemove(i)} aria-label="Remove"
-              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/55 text-white inline-flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <X className="w-3 h-3" />
+    <div className="mt-3 flex flex-wrap gap-2.5">
+      {srcs.map((src, i) => (
+        <div key={i} className="relative w-[96px] h-[74px] rounded-lg overflow-hidden border border-hx-line">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt="" className="w-full h-full object-cover cursor-zoom-in" onClick={() => onView(src)} />
+          <button type="button" onClick={() => onView(src)} aria-label="Enlarge"
+            className="absolute bottom-1 left-1 w-5 h-5 rounded-md bg-black/55 text-white inline-flex items-center justify-center">
+            <ZoomIn className="w-3 h-3" />
+          </button>
+          {showCover && (i === 0 ? (
+            <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-hx-red text-white text-[9px] font-bold uppercase tracking-wide inline-flex items-center gap-0.5"><Star className="w-2.5 h-2.5 fill-white" /> Cover</span>
+          ) : onMakeCover ? (
+            <button type="button" onClick={() => onMakeCover(i)} title="Make cover"
+              className="absolute top-1 left-1 w-5 h-5 rounded-md bg-black/55 text-white inline-flex items-center justify-center">
+              <Star className="w-3 h-3" />
             </button>
-          </div>
-        ))}
-      </div>
+          ) : null)}
+          <button type="button" onClick={() => onRemove(i)} aria-label="Remove"
+            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/55 text-white inline-flex items-center justify-center">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
