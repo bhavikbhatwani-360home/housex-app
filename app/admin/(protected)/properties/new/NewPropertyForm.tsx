@@ -171,24 +171,24 @@ export default function NewPropertyForm({
 
   return (
     <div>
-      <header className="h-14 border-b border-hx-line bg-white flex items-center px-6 gap-3 sticky top-0 z-10">
-        <Link href="/admin/properties" className="w-8 h-8 rounded-lg border border-hx-line inline-flex items-center justify-center text-hx-slate hover:bg-hx-bg">
+      <header className="h-14 border-b border-hx-line bg-white flex items-center px-3 sm:px-6 gap-2 sm:gap-3 sticky top-0 z-10">
+        <Link href="/admin/properties" className="w-8 h-8 rounded-lg border border-hx-line inline-flex items-center justify-center text-hx-slate hover:bg-hx-bg shrink-0">
           <ArrowLeft className="w-4 h-4" />
         </Link>
-        <h1 className="text-[16px] font-semibold tracking-tight">{isEdit ? "Edit property" : "Add property"}</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <button form="adminpropform" disabled={busy} className="h-9 px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-40">
-            {busy ? "Saving…" : isEdit ? "Save changes" : "Publish"}
+        <h1 className="text-[15px] sm:text-[16px] font-semibold tracking-tight truncate min-w-0">{isEdit ? "Edit property" : "Add property"}</h1>
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <button form="adminpropform" disabled={busy} className="h-9 px-3 sm:px-4 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red disabled:opacity-40">
+            {busy ? "Saving…" : isEdit ? "Save" : "Publish"}
           </button>
           {isEdit && nextPendingId && (
-            <button type="button" onClick={() => save(true)} disabled={busy} className="h-9 px-4 rounded-lg bg-hx-ink text-white text-[13px] font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">
-              Save &amp; next →
+            <button type="button" onClick={() => save(true)} disabled={busy} className="h-9 px-3 sm:px-4 rounded-lg bg-hx-ink text-white text-[13px] font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">
+              <span className="hidden sm:inline">Save &amp;&nbsp;</span>next →
             </button>
           )}
         </div>
       </header>
 
-      <div className="p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 max-w-5xl">
+      <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 max-w-5xl">
         <form id="adminpropform" onSubmit={submit} className="space-y-5">
           <Card title="On behalf of developer">
             <label className="block">
@@ -300,7 +300,7 @@ export default function NewPropertyForm({
         </form>
 
         {/* live preview */}
-        <div className="lg:sticky lg:top-20 h-fit">
+        <div className="hidden lg:block lg:sticky lg:top-20 h-fit">
           <div className="text-[10.5px] uppercase tracking-wider text-hx-muted mb-2 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-hx-red" /> How HouseX AI sees it
           </div>
@@ -328,7 +328,7 @@ export default function NewPropertyForm({
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-hx-line bg-white p-5">
+    <div className="rounded-xl border border-hx-line bg-white p-4 sm:p-5">
       <div className="text-[13px] font-semibold mb-3.5">{title}</div>
       {children}
     </div>

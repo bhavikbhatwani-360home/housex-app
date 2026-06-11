@@ -34,22 +34,22 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
 
   return (
     <div>
-      <header className="h-14 border-b border-hx-line bg-white flex items-center px-6">
-        <h1 className="text-[16px] font-semibold tracking-tight flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-hx-red" /> Properties
+      <header className="h-14 border-b border-hx-line bg-white flex items-center px-4 sm:px-6">
+        <h1 className="text-[15px] sm:text-[16px] font-semibold tracking-tight flex items-center gap-2 min-w-0">
+          <Building2 className="w-4 h-4 text-hx-red shrink-0" /> Properties
           <span className="num text-[12px] font-medium text-hx-muted">{props.length}</span>
           {pending > 0 && (
-            <span className="num text-[11px] font-semibold text-hx-warning bg-hx-warning/10 rounded-full px-2 py-0.5">
+            <span className="num text-[11px] font-semibold text-hx-warning bg-hx-warning/10 rounded-full px-2 py-0.5 hidden sm:inline">
               {pending} awaiting review
             </span>
           )}
         </h1>
-        <div className="ml-auto flex items-center gap-2">
-          <Link href="/admin/properties/import" className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-hx-line text-hx-slate text-[13px] font-semibold hover:bg-hx-bg">
-            <Upload className="w-4 h-4" /> Import from RERA
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <Link href="/admin/properties/import" className="inline-flex items-center gap-1.5 h-9 px-3 sm:px-3.5 rounded-lg border border-hx-line text-hx-slate text-[13px] font-semibold hover:bg-hx-bg">
+            <Upload className="w-4 h-4" /> <span className="hidden sm:inline">Import from RERA</span>
           </Link>
-          <Link href="/admin/properties/new" className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
-            <Plus className="w-4 h-4" /> Add property
+          <Link href="/admin/properties/new" className="inline-flex items-center gap-1.5 h-9 px-3 sm:px-3.5 rounded-lg bg-hx-red text-white text-[13px] font-semibold shadow-hx-red">
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add property</span>
           </Link>
         </div>
       </header>

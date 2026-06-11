@@ -26,7 +26,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
           </span>
           <div className="leading-tight">
             <div className="text-[13.5px] font-semibold tracking-tight">HouseX</div>
-            <div className="text-[10.5px] text-hx-muted -mt-0.5">{isSuper ? "Operator console" : "Property desk"}</div>
+            <div className="text-[10.5px] text-hx-muted -mt-0.5">{isSuper ? "Operator console" : "Field desk"}</div>
           </div>
         </div>
         <nav className="flex-1 p-2.5 space-y-0.5">
@@ -51,8 +51,8 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
         </nav>
         <div className="p-2.5 border-t border-hx-line">
           <div className="px-3 pb-2 leading-tight">
-            <div className="text-[12.5px] font-medium">{isSuper ? "Super admin" : "Sub-admin"}</div>
-            <div className="text-[10.5px] text-hx-muted">{isSuper ? "Full access" : "Adds properties for developers"}</div>
+            <div className="text-[12.5px] font-medium">{isSuper ? "Super admin" : "Field Executive"}</div>
+            <div className="text-[10.5px] text-hx-muted">{isSuper ? "Full access" : "Lists & activates projects"}</div>
           </div>
           <LogoutButton />
         </div>
