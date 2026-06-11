@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, X } from "lucide-react";
 
-type UnitRow = { floor: string; priceLakh: string; facing: string; carpetSqft: string };
+type UnitRow = { floor: string; priceLakh: string; listPriceLakh: string; tag: string; facing: string; carpetSqft: string };
 type DevOption = { id: string; company: string };
 type FormState = {
   name: string; developer: string; city: string; locality: string; bhk: string; facing: string;
   carpetSqft: string; distanceToStationM: string; reraId: string; status: string; amenities: string; brochureUrl: string;
-  videoUrl: string; possession: string; description: string; images: string;
+  videoUrl: string; possession: string; description: string; images: string; offerNote: string;
   totalTowers: string; totalUnits: string; projectArea: string; totalFloors: string; floorPlans: string; nearby: string;
 };
 
@@ -21,7 +21,7 @@ const STATUSES = ["Live", "Pending", "Draft"];
 const EMPTY_FORM: FormState = {
   name: "", developer: "", city: "Mumbai (MMR)", locality: "", bhk: "2 BHK", facing: "East",
   carpetSqft: "", distanceToStationM: "", reraId: "", status: "Live", amenities: "", brochureUrl: "",
-  videoUrl: "", possession: "", description: "", images: "",
+  videoUrl: "", possession: "", description: "", images: "", offerNote: "",
   totalTowers: "", totalUnits: "", projectArea: "", totalFloors: "", floorPlans: "", nearby: "",
 };
 
@@ -40,7 +40,7 @@ export default function NewPropertyForm({
   const [developerId, setDeveloperId] = useState(initialDeveloperId ?? developers[0]?.id ?? "");
   const [f, setF] = useState<FormState>({ ...EMPTY_FORM, ...initial });
   const [units, setUnits] = useState<UnitRow[]>(
-    initialUnits && initialUnits.length ? initialUnits : [{ floor: "", priceLakh: "", facing: "East", carpetSqft: "" }]
+    initialUnits && initialUnits.length ? initialUnits : [{ floor: "", priceLakh: "", listPriceLakh: "", tag: "", facing: "East", carpetSqft: "" }]
   );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -95,7 +95,7 @@ export default function NewPropertyForm({
 
   const setUnit = (i: number, k: keyof UnitRow, v: string) =>
     setUnits((p) => p.map((u, j) => (j === i ? { ...u, [k]: v } : u)));
-  const addUnit = () => setUnits((p) => [...p, { floor: "", priceLakh: "", facing: f.facing, carpetSqft: f.carpetSqft }]);
+  const addUnit = () => setUnits((p) => [...p, { floor: "", priceLakh: "", listPriceLakh: "", tag: "", facing: f.facing, carpetSqft: f.carpetSqft }]);
   const removeUnit = (i: number) => setUnits((p) => (p.length > 1 ? p.filter((_, j) => j !== i) : p));
 
   const prices = units.map((u) => Number(u.priceLakh)).filter((x) => x > 0);
@@ -148,6 +148,7 @@ export default function NewPropertyForm({
           nearby: f.nearby.split("\n").map((x) => x.trim()).filter(Boolean),
           units: units.map((u) => ({
             floor: Number(u.floor), priceLakh: Number(u.priceLakh),
+            listPriceLakh: Number(u.listPriceLakh) || 0, tag: u.tag.trim(),
             facing: u.facing, carpetSqft: Number(u.carpetSqft),
           })),
         }),
@@ -223,26 +224,45 @@ export default function NewPropertyForm({
           </Card>
 
           <Card title="Units & pricing">
-            <div className="space-y-2">
-              <div className="grid grid-cols-[60px_1fr_1fr_1fr_36px] gap-2 text-[10.5px] uppercase tracking-wider text-hx-muted px-1">
-                <span>Floor</span><span>Price (₹L)</span><span>Facing</span><span>Sqft</span><span></span>
-              </div>
-              {units.map((u, i) => (
-                <div key={i} className="grid grid-cols-[60px_1fr_1fr_1fr_36px] gap-2 items-center">
-                  <input value={u.floor} onChange={(e) => setUnit(i, "floor", e.target.value)} type="number" placeholder="1" className="h-9 px-2 rounded-lg border border-hx-line bg-hx-bg text-[13px] num outline-none focus:border-hx-red/50" />
-                  <input value={u.priceLakh} onChange={(e) => setUnit(i, "priceLakh", e.target.value)} type="number" placeholder="54" className="h-9 px-2 rounded-lg border border-hx-line bg-hx-bg text-[13px] num outline-none focus:border-hx-red/50" />
-                  <select value={u.facing} onChange={(e) => setUnit(i, "facing", e.target.value)} className="h-9 px-2 rounded-lg border border-hx-line bg-hx-bg text-[13px] outline-none focus:border-hx-red/50">
-                    {FACINGS.map((x) => <option key={x}>{x}</option>)}
-                  </select>
-                  <input value={u.carpetSqft} onChange={(e) => setUnit(i, "carpetSqft", e.target.value)} type="number" placeholder="720" className="h-9 px-2 rounded-lg border border-hx-line bg-hx-bg text-[13px] num outline-none focus:border-hx-red/50" />
-                  <button type="button" onClick={() => removeUnit(i)} className="w-9 h-9 rounded-lg text-hx-muted hover:text-hx-danger hover:bg-hx-bg inline-flex items-center justify-center">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+            <p className="-mt-1.5 mb-3 text-[11.5px] text-hx-muted leading-relaxed">
+              <strong className="text-hx-slate">Offer ₹L</strong> is what the buyer pays. Add a higher <strong className="text-hx-slate">List ₹L</strong> to show
+              a struck-through price and a <span className="text-hx-success font-semibold">“Save”</span> tag — only use a real, honest marked price.
+            </p>
+            <div className="space-y-2.5">
+              {units.map((u, i) => {
+                const sv = Number(u.listPriceLakh) - Number(u.priceLakh);
+                return (
+                  <div key={i} className="rounded-xl border border-hx-line bg-hx-bg/40 p-2.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-semibold text-hx-slate">Unit {i + 1}{sv > 0 && Number(u.priceLakh) > 0 ? <span className="ml-1.5 text-hx-success">· save ₹{sv} L</span> : ""}</span>
+                      <button type="button" onClick={() => removeUnit(i)} className="w-7 h-7 -mr-1 rounded-lg text-hx-muted hover:text-hx-danger hover:bg-white inline-flex items-center justify-center">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <UField label="Floor" value={u.floor} onChange={(v) => setUnit(i, "floor", v)} type="number" placeholder="1" />
+                      <UField label="Offer ₹L" value={u.priceLakh} onChange={(v) => setUnit(i, "priceLakh", v)} type="number" placeholder="31" />
+                      <UField label="List ₹L" value={u.listPriceLakh} onChange={(v) => setUnit(i, "listPriceLakh", v)} type="number" placeholder="35" />
+                    </div>
+                    <div className="grid grid-cols-[1fr_1fr_1.6fr] gap-2 mt-2">
+                      <label className="block">
+                        <span className="text-[10px] uppercase tracking-wider text-hx-muted mb-1 block">Facing</span>
+                        <select value={u.facing} onChange={(e) => setUnit(i, "facing", e.target.value)} className="w-full h-9 px-2 rounded-lg border border-hx-line bg-white text-[13px] outline-none focus:border-hx-red/50">
+                          {FACINGS.map((x) => <option key={x}>{x}</option>)}
+                        </select>
+                      </label>
+                      <UField label="Sqft" value={u.carpetSqft} onChange={(v) => setUnit(i, "carpetSqft", v)} type="number" placeholder="420" />
+                      <UField label="Tag (optional)" value={u.tag} onChange={(v) => setUnit(i, "tag", v)} placeholder="Garden view" />
+                    </div>
+                  </div>
+                );
+              })}
               <button type="button" onClick={addUnit} className="mt-1 inline-flex items-center gap-1.5 text-[13px] font-medium text-hx-red hover:underline">
                 <Plus className="w-4 h-4" /> Add unit
               </button>
+            </div>
+            <div className="mt-4 pt-4 border-t border-hx-line">
+              <Input label="Offer banner (optional) — shown above the units" value={f.offerNote} onChange={set("offerNote")} placeholder="Limited launch pricing — only a few units left" full />
             </div>
           </Card>
 
@@ -342,6 +362,15 @@ function Input({ label, full, ...props }: { label: string; full?: boolean } & Re
     <label className={`block ${full ? "sm:col-span-2" : ""}`}>
       <span className="text-[12px] font-medium text-hx-slate mb-1 block">{label}</span>
       <input {...props} className="w-full h-10 px-3 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50" />
+    </label>
+  );
+}
+function UField({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
+  return (
+    <label className="block">
+      <span className="text-[10px] uppercase tracking-wider text-hx-muted mb-1 block">{label}</span>
+      <input value={value} onChange={(e) => onChange(e.target.value)} type={type} placeholder={placeholder} inputMode={type === "number" ? "numeric" : undefined}
+        className={`w-full h-9 px-2 rounded-lg border border-hx-line bg-white text-[13px] outline-none focus:border-hx-red/50 ${type === "number" ? "num" : ""}`} />
     </label>
   );
 }

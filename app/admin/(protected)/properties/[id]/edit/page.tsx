@@ -40,6 +40,7 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
     possession: p.possession ?? "",
     description: p.description ?? "",
     images: p.images.join("\n"),
+    offerNote: p.offerNote ?? "",
     totalTowers: numStr(p.totalTowers),
     totalUnits: numStr(p.totalUnits),
     projectArea: p.projectArea ?? "",
@@ -51,6 +52,8 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
   const initialUnits = p.units.map((u) => ({
     floor: String(u.floor),
     priceLakh: String(u.priceLakh),
+    listPriceLakh: u.listPriceLakh ? String(u.listPriceLakh) : "",
+    tag: u.tag ?? "",
     facing: u.facing,
     carpetSqft: String(u.carpetSqft),
   }));

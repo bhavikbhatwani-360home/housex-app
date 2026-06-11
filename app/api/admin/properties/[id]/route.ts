@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 const STATUSES = ["Live", "Pending", "Draft"];
 
-type UnitIn = { floor?: unknown; priceLakh?: unknown; facing?: unknown; carpetSqft?: unknown };
+type UnitIn = { floor?: unknown; priceLakh?: unknown; listPriceLakh?: unknown; tag?: unknown; facing?: unknown; carpetSqft?: unknown };
 
 // PATCH — quick status change (manager approval). Guards against going Live
 // with no real price, which would show "₹0 L" to buyers.
@@ -82,13 +82,19 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!developerName) return Response.json({ error: "Pick a developer account or type a developer name." }, { status: 400 });
 
   const units = (Array.isArray(body.units) ? (body.units as UnitIn[]) : [])
-    .map((u) => ({
-      floor: n(u.floor),
-      priceLakh: n(u.priceLakh),
-      facing: s(u.facing, facing) || facing,
-      carpetSqft: n(u.carpetSqft, carpetSqft) || carpetSqft,
-      available: true,
-    }))
+    .map((u) => {
+      const priceLakh = n(u.priceLakh);
+      const list = n(u.listPriceLakh);
+      return {
+        floor: n(u.floor),
+        priceLakh,
+        listPriceLakh: list > priceLakh ? list : null,
+        tag: s(u.tag) || null,
+        facing: s(u.facing, facing) || facing,
+        carpetSqft: n(u.carpetSqft, carpetSqft) || carpetSqft,
+        available: true,
+      };
+    })
     .filter((u) => u.priceLakh > 0);
 
   // A listing with no priced units stays a skeleton (price 0). It cannot go Live
@@ -112,6 +118,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           totalUnits: n(body.totalUnits) > 0 ? Math.trunc(n(body.totalUnits)) : null,
           projectArea: s(body.projectArea) || null,
           totalFloors: s(body.totalFloors) || null,
+          offerNote: s(body.offerNote) || null,
           city: s(body.city, "Mumbai (MMR)"),
           ...(units.length ? { units: { create: units } } : {}),
         },

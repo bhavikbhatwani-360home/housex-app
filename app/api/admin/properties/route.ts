@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-type UnitIn = { floor?: unknown; priceLakh?: unknown; facing?: unknown; carpetSqft?: unknown; available?: unknown };
+type UnitIn = { floor?: unknown; priceLakh?: unknown; listPriceLakh?: unknown; tag?: unknown; facing?: unknown; carpetSqft?: unknown; available?: unknown };
 
 export async function POST(req: Request) {
   if (!(await isAdmin())) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -54,13 +54,20 @@ export async function POST(req: Request) {
   if (!developerName) return Response.json({ error: "Pick a developer account or type a developer name." }, { status: 400 });
 
   const units = (Array.isArray(body.units) ? (body.units as UnitIn[]) : [])
-    .map((u) => ({
-      floor: n(u.floor),
-      priceLakh: n(u.priceLakh),
-      facing: s(u.facing, facing) || facing,
-      carpetSqft: n(u.carpetSqft, carpetSqft) || carpetSqft,
-      available: u.available !== false,
-    }))
+    .map((u) => {
+      const priceLakh = n(u.priceLakh);
+      const list = n(u.listPriceLakh);
+      return {
+        floor: n(u.floor),
+        priceLakh,
+        // only keep an anchor price if it's actually higher than the offer
+        listPriceLakh: list > priceLakh ? list : null,
+        tag: s(u.tag) || null,
+        facing: s(u.facing, facing) || facing,
+        carpetSqft: n(u.carpetSqft, carpetSqft) || carpetSqft,
+        available: u.available !== false,
+      };
+    })
     .filter((u) => u.priceLakh > 0);
 
   if (!name || !locality || !bhk)
@@ -77,6 +84,7 @@ export async function POST(req: Request) {
         name, developer: developerName, developerId, city, locality, bhk, facing, carpetSqft, distanceToStationM,
         reraId, status, brochureUrl, amenities, priceMin, priceMax,
         description, possession, videoUrl, images, floorPlans, nearby, totalTowers, totalUnits, projectArea, totalFloors,
+        offerNote: s(body.offerNote) || null,
         units: { create: units },
       },
     });

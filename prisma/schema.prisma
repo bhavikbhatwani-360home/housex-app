@@ -80,6 +80,7 @@ model Property {
   totalUnits         Int?
   projectArea        String?
   totalFloors        String?
+  offerNote          String? // e.g. "Limited launch pricing — a few units left"
   units              Unit[]
   visits             Visit[]
   bookings           Booking[]
@@ -123,14 +124,16 @@ model StaffUser {
 }
 
 model Unit {
-  id         String   @id @default(cuid())
-  propertyId String
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  floor      Int
-  priceLakh  Int
-  facing     String
-  carpetSqft Int
-  available  Boolean  @default(true)
+  id            String   @id @default(cuid())
+  propertyId    String
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  floor         Int
+  priceLakh     Int // the offer / selling price
+  listPriceLakh Int? // the marked / anchor price (shown struck-through when > priceLakh)
+  tag           String? // e.g. "Garden view", "Corner", "Launch price"
+  facing        String
+  carpetSqft    Int
+  available     Boolean  @default(true)
 }
 
 model Lead {

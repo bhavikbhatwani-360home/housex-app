@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db";
 import ShareButton from "./ShareButton";
 import PropertyActions from "./PropertyActions";
 import EmiCalculator from "./EmiCalculator";
+import UnitsBlock from "./UnitsBlock";
 
 export const dynamic = "force-dynamic";
 
@@ -116,8 +117,6 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
     whyBits.join(", ") +
     (p.amenities.length ? `, with ${p.amenities.slice(0, 2).join(" & ").toLowerCase()}` : "") +
     ".";
-
-  const unitsLeft = p.units.length;
 
   const facts = [
     { icon: Building2, label: "Configuration", value: p.bhk },
@@ -259,27 +258,21 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             </>
           )}
 
-          {/* available units */}
-          <div className="mt-6 flex items-center gap-2 mb-2">
-            <span className="text-[12px] uppercase tracking-wider text-hx-muted font-medium">Available units</span>
-            {unitsLeft > 0 && (
-              <span className={`text-[10.5px] font-semibold rounded-full px-2 py-0.5 ${unitsLeft <= 3 ? "bg-hx-red/10 text-hx-red" : "bg-hx-bg text-hx-slate"}`}>
-                {unitsLeft <= 3 ? `Only ${unitsLeft} left` : `${unitsLeft} available`}
-              </span>
-            )}
-          </div>
-          <div className="rounded-xl border border-hx-line overflow-hidden">
-            {p.units.length === 0 && <div className="p-4 text-[13px] text-hx-muted">Contact the developer for availability.</div>}
-            {p.units.map((u, i) => (
-              <div key={u.id} className={`flex items-center justify-between px-4 py-3 ${i > 0 ? "border-t border-hx-line" : ""}`}>
-                <div className="text-[13.5px] font-medium">Floor {u.floor} · {u.facing}-facing</div>
-                <div className="flex items-center gap-3">
-                  <span className="num text-[12px] text-hx-muted">{u.carpetSqft} sqft</span>
-                  <span className="num text-[15px] font-bold">₹{u.priceLakh} L</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* pick your unit — anchored offer pricing + lock-the-price */}
+          <UnitsBlock
+            propertyId={p.id}
+            propertyName={p.name}
+            offerNote={p.offerNote}
+            units={p.units.map((u) => ({
+              id: u.id,
+              floor: u.floor,
+              facing: u.facing,
+              carpetSqft: u.carpetSqft,
+              priceLakh: u.priceLakh,
+              listPriceLakh: u.listPriceLakh,
+              tag: u.tag,
+            }))}
+          />
 
           {/* floor plans */}
           {p.floorPlans.length > 0 && (
