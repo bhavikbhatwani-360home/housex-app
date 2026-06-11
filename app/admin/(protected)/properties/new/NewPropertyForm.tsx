@@ -26,11 +26,13 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function NewPropertyForm({
-  developers, initial, initialUnits, propertyId, initialDeveloperId, nextPendingId,
+  developers, initial, initialUnits, initialPhotos, initialPlans, propertyId, initialDeveloperId, nextPendingId,
 }: {
   developers: DevOption[];
   initial?: Partial<FormState>;
   initialUnits?: UnitRow[];
+  initialPhotos?: string[];
+  initialPlans?: string[];
   propertyId?: string;
   initialDeveloperId?: string;
   nextPendingId?: string | null;
@@ -51,8 +53,9 @@ export default function NewPropertyForm({
   const photoRef = useRef<HTMLInputElement>(null);
   const planRef = useRef<HTMLInputElement>(null);
   const broRef = useRef<HTMLInputElement>(null);
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [plans, setPlans] = useState<string[]>([]);
+  // existing listing media shows up as thumbnails (so edits don't look empty)
+  const [photos, setPhotos] = useState<string[]>(initialPhotos ?? []);
+  const [plans, setPlans] = useState<string[]>(initialPlans ?? []);
   const [broBusy, setBroBusy] = useState(false);
   const [broErr, setBroErr] = useState("");
 
@@ -70,8 +73,10 @@ export default function NewPropertyForm({
         const d = JSON.parse(raw);
         if (d.f) setF((p) => ({ ...p, ...d.f }));
         if (Array.isArray(d.units) && d.units.length) setUnits(d.units);
-        if (Array.isArray(d.photos)) setPhotos(d.photos);
-        if (Array.isArray(d.plans)) setPlans(d.plans);
+        // only let a draft override media if it actually has some — never let an
+        // empty draft wipe the photos we just loaded from the saved listing
+        if (Array.isArray(d.photos) && d.photos.length) setPhotos(d.photos);
+        if (Array.isArray(d.plans) && d.plans.length) setPlans(d.plans);
         if (typeof d.developerId === "string") setDeveloperId(d.developerId);
         setRecovered(true);
       }
