@@ -148,35 +148,17 @@ export default function NewPropertyForm({
   const makeCover = (i: number) =>
     setPhotos((p) => (i <= 0 ? p : [p[i], ...p.slice(0, i), ...p.slice(i + 1)]));
 
-  // read a file as a data URL (brochure PDFs aren't resized like photos)
-  const fileToDataUrl = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.onerror = () => reject(new Error("read"));
-      r.readAsDataURL(file);
-    });
-
-  // Brochure upload: PDFs need Blob storage; image brochures can fall back inline.
+  // Brochure upload — a photo / scan of the brochure, stored like a listing photo
+  // (hosted on Blob if configured, otherwise inline). Kept a touch larger so text stays legible.
   const uploadBrochure = async (file: File | undefined) => {
     if (!file) return;
     setBroErr(""); setBroBusy(true);
     try {
-      const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
-      if (file.size > 25 * 1024 * 1024) { setBroErr("That file is over 25 MB — please use a smaller brochure."); return; }
-      const data = await fileToDataUrl(file);
-      const res = await fetch("/api/admin/upload", {
-        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ images: [data] }),
-      });
-      const j = await res.json();
-      const url: string | undefined = j?.urls?.[0];
-      if (url && (j.hosted || !isPdf)) {
-        setF((p) => ({ ...p, brochureUrl: url }));
-      } else {
-        setBroErr("PDF upload needs file storage turned on. For now, paste a brochure link below.");
-      }
+      const data = await resizeImage(file, 2000, 0.85);
+      const [url] = await hostPhotos([data]);
+      setF((p) => ({ ...p, brochureUrl: url }));
     } catch {
-      setBroErr("Couldn't upload the brochure — try again or paste a link below.");
+      setBroErr("Couldn't add that image — try another, or paste a link below.");
     } finally {
       setBroBusy(false);
       if (broRef.current) broRef.current.value = "";
@@ -426,8 +408,8 @@ export default function NewPropertyForm({
 
             {/* ── brochure upload ── */}
             <div className="mt-4">
-              <span className="text-[12px] font-medium text-hx-slate mb-1.5 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-hx-red" /> Brochure (PDF or photo)</span>
-              <input ref={broRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(e) => uploadBrochure(e.target.files?.[0])} className="hidden" />
+              <span className="text-[12px] font-medium text-hx-slate mb-1.5 flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-hx-red" /> Brochure (photo)</span>
+              <input ref={broRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => uploadBrochure(e.target.files?.[0])} className="hidden" />
               {f.brochureUrl ? (
                 <div className="flex items-center gap-2 rounded-lg border border-hx-line bg-hx-bg/60 px-3 py-2">
                   <FileText className="w-4 h-4 text-hx-red shrink-0" />
@@ -441,8 +423,8 @@ export default function NewPropertyForm({
                     className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-hx-line text-hx-slate text-[13px] font-semibold hover:bg-hx-bg disabled:opacity-50">
                     {broBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} Upload brochure
                   </button>
-                  <span className="ml-2 text-[11px] text-hx-muted">or paste a link below</span>
-                  <input value={f.brochureUrl} onChange={set("brochureUrl")} placeholder="https://…/brochure.pdf" className="mt-2 w-full h-10 px-3 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50" />
+                  <span className="ml-2 text-[11px] text-hx-muted">a photo of the brochure — or paste a link below</span>
+                  <input value={f.brochureUrl} onChange={set("brochureUrl")} placeholder="https://…" className="mt-2 w-full h-10 px-3 rounded-lg border border-hx-line bg-hx-bg text-[13.5px] outline-none focus:border-hx-red/50" />
                 </>
               )}
               {broErr && <p className="mt-1.5 text-[12px] text-hx-warning">{broErr}</p>}
@@ -627,7 +609,7 @@ function BuyerPreview({
 
             {brochureUrl && (
               <a href={brochureUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white border border-hx-line text-[13px] font-semibold text-hx-ink">
-                <FileText className="w-4 h-4 text-hx-red" /> Download brochure
+                <FileText className="w-4 h-4 text-hx-red" /> View brochure
               </a>
             )}
 
