@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { IndianRupee } from "lucide-react";
 
-// Interactive affordability: drag the tenure, EMI updates live. ~8.6% p.a.,
+// Interactive affordability: drag the tenure, EMI updates live. 7.5% p.a.,
 // 90% loan-to-value (10% down) — a sensible default a buyer can feel.
 export default function EmiCalculator({ priceLakh }: { priceLakh: number }) {
   const [years, setYears] = useState(20);
   const loan = priceLakh * 100000 * 0.9;
-  const r = 0.086 / 12;
+  const r = 0.075 / 12;
   const n = years * 12;
   const emi = Math.round((loan * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1));
 
@@ -17,7 +17,7 @@ export default function EmiCalculator({ priceLakh }: { priceLakh: number }) {
       <div className="flex items-center gap-4">
         <span className="w-11 h-11 rounded-xl bg-hx-red/8 text-hx-red inline-flex items-center justify-center shrink-0"><IndianRupee className="w-5 h-5" /></span>
         <div className="min-w-0">
-          <div className="text-[12px] text-hx-muted">Estimated EMI · 90% loan · 8.6%</div>
+          <div className="text-[12px] text-hx-muted">Estimated EMI · 90% loan · 7.5%</div>
           <div className="num text-[22px] font-extrabold tracking-tight leading-tight">
             ₹{emi.toLocaleString("en-IN")}<span className="text-[13px] font-medium text-hx-muted">/month</span>
           </div>
