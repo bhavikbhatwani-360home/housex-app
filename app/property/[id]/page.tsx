@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft, BadgeCheck, MapPin, Sparkles, Check, Building2, Compass, Train,
-  Layers, Play, KeyRound, Briefcase, ExternalLink, TrendingUp, Receipt, HelpCircle, ChevronDown,
+  Layers, Play, KeyRound, Briefcase, ExternalLink, TrendingUp, HelpCircle, ChevronDown,
   FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -105,16 +105,6 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
   // similar listings — same locality first, then same city
   const similar = [...others].sort((a, b) => Number(b.locality === p.locality) - Number(a.locality === p.locality)).slice(0, 3);
-
-  // what you'll actually pay — Maharashtra: stamp duty ~6% (incl. metro cess),
-  // registration 1% capped at ₹30k, GST 5% only while under construction.
-  const isReady = /ready/i.test(p.possession || "");
-  const baseCost = p.priceMin * 100000;
-  const stampDuty = Math.round(baseCost * 0.06);
-  const registration = Math.min(Math.round(baseCost * 0.01), 30000);
-  const gst = isReady ? 0 : Math.round(baseCost * 0.05);
-  const allIn = baseCost + stampDuty + registration + gst;
-  const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
   const vid = youtubeId(p.videoUrl);
 
   const basics = [
@@ -307,27 +297,6 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
           {/* affordability — interactive EMI */}
           <EmiCalculator priceLakh={p.priceMin} />
-
-          {/* what you'll actually pay — sticker price is never the full story */}
-          {p.priceMin > 0 && (
-            <div className="mt-4 rounded-2xl border border-hx-line p-4">
-              <div className="flex items-center gap-1.5 text-[12px] font-semibold text-hx-red mb-3"><Receipt className="w-3.5 h-3.5" /> What you&apos;ll actually pay</div>
-              <div className="space-y-2 text-[13px]">
-                <div className="flex items-center justify-between"><span className="text-hx-slate">Property price{p.priceMin !== p.priceMax ? " (from)" : ""}</span><span className="num font-semibold">{inr(baseCost)}</span></div>
-                <div className="flex items-center justify-between"><span className="text-hx-slate">Stamp duty (~6%)</span><span className="num font-semibold">{inr(stampDuty)}</span></div>
-                <div className="flex items-center justify-between"><span className="text-hx-slate">Registration (1%, max ₹30k)</span><span className="num font-semibold">{inr(registration)}</span></div>
-                <div className="flex items-center justify-between">
-                  <span className="text-hx-slate">GST {isReady ? "" : "(5%, under construction)"}</span>
-                  {gst > 0 ? <span className="num font-semibold">{inr(gst)}</span> : <span className="text-[12px] font-semibold text-hx-success">None — ready to move</span>}
-                </div>
-                <div className="pt-2 mt-1 border-t border-hx-line flex items-center justify-between">
-                  <span className="font-semibold">All-in estimate</span>
-                  <span className="num text-[16px] font-extrabold tracking-tight">{inr(allIn)}</span>
-                </div>
-              </div>
-              <p className="mt-2.5 text-[11px] text-hx-muted">Indicative for Maharashtra — excludes society charges, parking and maintenance deposits. Confirm exact figures with the developer.</p>
-            </div>
-          )}
 
           {/* key facts */}
           <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Key facts</div>
