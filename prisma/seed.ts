@@ -124,6 +124,27 @@ async function main() {
   }
   const count = await prisma.property.count();
   console.log(`Done. ${count} properties in inventory.`);
+
+  // ── staff accounts (username + password login) ──
+  const { scryptSync, randomBytes } = await import("crypto");
+  const hash = (pw: string) => {
+    const salt = randomBytes(16).toString("hex");
+    return `${salt}:${scryptSync(pw, salt, 64).toString("hex")}`;
+  };
+  const staff = [
+    { username: "pawan", name: "Pawan", role: "field", password: process.env.PAWAN_PASSWORD || "Pawan@HX2026" },
+  ];
+  for (const s of staff) {
+    const existing = await prisma.staffUser.findUnique({ where: { username: s.username } });
+    if (existing) {
+      console.log(`  • staff '${s.username}' already exists (password unchanged)`);
+    } else {
+      await prisma.staffUser.create({
+        data: { username: s.username, name: s.name, role: s.role, passwordHash: hash(s.password) },
+      });
+      console.log(`  ✓ staff '${s.username}' created (${s.role})`);
+    }
+  }
 }
 
 main()

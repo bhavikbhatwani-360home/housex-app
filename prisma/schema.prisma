@@ -112,6 +112,16 @@ model OtpCode {
   @@index([phone])
 }
 
+model StaffUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("field") // super | field
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
 model Unit {
   id         String   @id @default(cuid())
   propertyId String

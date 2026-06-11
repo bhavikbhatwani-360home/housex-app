@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
+import { Lock, User } from "lucide-react";
 
 export default function AdminLogin() {
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -18,7 +19,7 @@ export default function AdminLogin() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
       if (res.ok) router.push(data.role === "sub" ? "/admin/properties" : "/admin/leads");
@@ -43,6 +44,18 @@ export default function AdminLogin() {
             <div className="text-[11px] text-hx-muted">Operator access</div>
           </div>
         </div>
+        <label className="text-[12px] font-medium text-hx-slate mb-1.5 flex items-center gap-1.5">
+          <User className="w-3.5 h-3.5" /> Username
+        </label>
+        <input
+          type="text"
+          autoCapitalize="none"
+          autoCorrect="off"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="e.g. pawan (leave blank for owner password)"
+          className="w-full h-11 px-3.5 rounded-xl border border-hx-line bg-hx-bg text-[14px] outline-none focus:border-hx-red/50 mb-4"
+        />
         <label className="text-[12px] font-medium text-hx-slate mb-1.5 flex items-center gap-1.5">
           <Lock className="w-3.5 h-3.5" /> Password
         </label>
