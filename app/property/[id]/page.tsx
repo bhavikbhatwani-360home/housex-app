@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft, BadgeCheck, MapPin, Sparkles, Check, Building2, Compass, Train,
   Layers, Play, KeyRound, Briefcase, ExternalLink, TrendingUp, HelpCircle, ChevronDown,
+  Activity, Lock, CalendarCheck, BadgeIndianRupee,
   FileText, GraduationCap, Stethoscope, ShoppingBag, TrainFront, Plane, Utensils, Landmark, Trees,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -90,6 +91,21 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
     });
   } catch {
     others = [];
+  }
+
+  // real transaction activity on this listing (last 30 days) — shown only when true
+  let visits30 = 0, bookings30 = 0, devLiveCount = 0;
+  let devAccount: { company: string; createdAt: Date } | null = null;
+  try {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    [visits30, bookings30, devLiveCount, devAccount] = await Promise.all([
+      prisma.visit.count({ where: { propertyId: p.id, createdAt: { gte: since } } }),
+      prisma.booking.count({ where: { propertyId: p.id, createdAt: { gte: since }, status: { not: "Refunded" } } }),
+      prisma.property.count({ where: { status: "Live", id: { not: p.id }, OR: [...(p.developerId ? [{ developerId: p.developerId }] : []), { developer: p.developer }] } }),
+      p.developerId ? prisma.developer.findUnique({ where: { id: p.developerId }, select: { company: true, createdAt: true } }) : null,
+    ]);
+  } catch {
+    /* signals are best-effort — the page renders fine without them */
   }
 
   const range = p.priceMin === p.priceMax ? `₹${p.priceMin} L` : `₹${p.priceMin}–${p.priceMax} L`;
@@ -341,6 +357,44 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             </>
           )}
 
+          {/* real activity on this listing — only rendered when it actually happened */}
+          {(visits30 > 0 || bookings30 > 0) && (
+            <div className="mt-6 rounded-xl bg-hx-red/[0.05] border border-hx-red/15 px-3.5 py-2.5 flex items-center gap-2.5">
+              <Activity className="w-4 h-4 text-hx-red shrink-0" />
+              <span className="text-[12.5px] text-hx-ink">
+                {visits30 > 0 && <><strong className="num">{visits30}</strong> site visit{visits30 > 1 ? "s" : ""} booked</>}
+                {visits30 > 0 && bookings30 > 0 && " · "}
+                {bookings30 > 0 && <><strong className="num">{bookings30}</strong> buyer{bookings30 > 1 ? "s" : ""} paid the ₹999 token</>}
+                <span className="text-hx-muted"> in the last 30 days</span>
+              </span>
+            </div>
+          )}
+
+          {/* how booking works — three steps, so "Lock this price" never feels like a leap */}
+          <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">How booking works on HouseX</div>
+          <div className="rounded-2xl border border-hx-line divide-y divide-hx-line overflow-hidden">
+            {[
+              { n: 1, icon: Lock, title: "Lock the price", desc: "Free, takes a minute. Your price goes to the developer — they confirm it on a call. No obligation." },
+              { n: 2, icon: CalendarCheck, title: "Visit the flat", desc: "In person or on a live video call, with a confirmed gate pass. A rep walks you through everything." },
+              { n: 3, icon: BadgeIndianRupee, title: "Book it with ₹999", desc: "Happy? Pay a ₹999 token to block your unit at the locked price while paperwork starts." },
+            ].map((s) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.n} className="flex items-start gap-3 px-4 py-3">
+                  <span className="relative w-9 h-9 rounded-xl bg-hx-red/8 text-hx-red inline-flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4" />
+                    <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-hx-ink text-white text-[9px] font-bold inline-flex items-center justify-center num">{s.n}</span>
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[13.5px] font-semibold">{s.title}</div>
+                    <div className="text-[12px] text-hx-muted leading-relaxed">{s.desc}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11.5px] text-hx-muted">No brokerage at any step — you deal with the developer directly.</p>
+
           {/* pick your unit — anchored offer pricing + lock-the-price */}
           <UnitsBlock
             propertyId={p.id}
@@ -406,18 +460,34 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             </>
           )}
 
-          {/* trust + RERA verify */}
-          <div className="mt-6 rounded-2xl border border-hx-line p-4 flex items-start gap-3">
-            <span className="w-10 h-10 rounded-xl bg-hx-success/10 text-hx-success inline-flex items-center justify-center shrink-0"><BadgeCheck className="w-5 h-5" /></span>
-            <div className="min-w-0">
-              <div className="text-[13.5px] font-semibold">RERA verified · {p.reraId || "registered"}</div>
-              <div className="text-[12px] text-hx-muted mt-0.5">By {p.developer}. Every HouseX listing is checked — no fake listings, no brokers.</div>
-              {p.reraId && (
-                <a href="https://maharera.maharashtra.gov.in/registered-projects" target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-hx-red hover:underline">
-                  Verify on MahaRERA <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              )}
+          {/* who you're dealing with — the party on the other side of the transaction */}
+          <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Who you&apos;re dealing with</div>
+          <div className="rounded-2xl border border-hx-line p-4">
+            <div className="flex items-start gap-3">
+              <span className="w-11 h-11 rounded-xl bg-hx-ink text-white inline-flex items-center justify-center shrink-0 text-[16px] font-bold">
+                {(devAccount?.company || p.developer).trim().charAt(0).toUpperCase() || "D"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[15px] font-semibold tracking-tight">{devAccount?.company || p.developer}</div>
+                <div className="text-[12px] text-hx-muted mt-0.5">
+                  {devAccount
+                    ? `Verified developer on HouseX since ${devAccount.createdAt.getFullYear()} — your lock, visit and token go straight to their team.`
+                    : "Developer of this project. Your lock, visit and token requests go straight to them — no brokers in between."}
+                </div>
+              </div>
             </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hx-success/10 text-hx-success text-[11.5px] font-semibold"><BadgeCheck className="w-3.5 h-3.5" /> RERA {p.reraId || "registered"}</span>
+              {devLiveCount > 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hx-bg border border-hx-line text-[11.5px] font-medium text-hx-slate"><Building2 className="w-3.5 h-3.5" /> {devLiveCount} more live project{devLiveCount > 1 ? "s" : ""} on HouseX</span>
+              )}
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hx-bg border border-hx-line text-[11.5px] font-medium text-hx-slate"><Check className="w-3.5 h-3.5 text-hx-success" /> No brokerage</span>
+            </div>
+            {p.reraId && (
+              <a href="https://maharera.maharashtra.gov.in/registered-projects" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-hx-red hover:underline">
+                Verify this project on MahaRERA <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
           </div>
 
           {/* on the map */}
