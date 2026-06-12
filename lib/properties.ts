@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { parseFloorPlans } from "./floorplan";
 
 /**
  * Build a compact, real inventory summary for HouseX AI's context.
@@ -22,7 +23,9 @@ export async function getInventoryContext(): Promise<string | null> {
           .join("; ");
         const amen = p.amenities.length ? ` Amenities: ${p.amenities.join(", ")}.` : "";
         const broch = p.brochureUrl ? " Brochure available." : "";
-        return `- ${p.name} by ${p.developer} — ${p.locality}, ${p.city}. ${p.bhk}, ₹${p.priceMin}–${p.priceMax}L, ${p.facing}-facing base, ${p.distanceToStationM} m from station, RERA ${p.reraId}, ${p.stage}${p.possession ? ` (possession ${p.possession})` : ""}. Available units: ${units}.${amen}${broch}`;
+        const planLabels = Array.from(new Set(parseFloorPlans(p.floorPlans).map((fp) => fp.label).filter(Boolean)));
+        const fplans = planLabels.length ? ` Floor plans: ${planLabels.join(", ")}.` : "";
+        return `- ${p.name} by ${p.developer} — ${p.locality}, ${p.city}. ${p.bhk}, ₹${p.priceMin}–${p.priceMax}L, ${p.facing}-facing base, ${p.distanceToStationM} m from station, RERA ${p.reraId}, ${p.stage}${p.possession ? ` (possession ${p.possession})` : ""}. Available units: ${units}.${amen}${broch}${fplans}`;
       })
       .join("\n");
   } catch {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Sparkles, Briefcase, Camera, Loader2, X, Eye, RotateCcw, Flame, Tag, MapPin, BadgeCheck, Lock, Check, Star, ZoomIn, FileText, ExternalLink, Play, Image as ImageIcon } from "lucide-react";
+import { PLAN_LABELS, parseFloorPlan, encodeFloorPlan, type FloorPlan } from "@/lib/floorplan";
 
 type UnitRow = { floor: string; priceLakh: string; listPriceLakh: string; tag: string; facing: string; carpetSqft: string };
 type DevOption = { id: string; company: string };
@@ -53,9 +54,10 @@ export default function NewPropertyForm({
   const photoRef = useRef<HTMLInputElement>(null);
   const planRef = useRef<HTMLInputElement>(null);
   const broRef = useRef<HTMLInputElement>(null);
-  // existing listing media shows up as thumbnails (so editing never looks empty)
+  // existing listing media shows up as thumbnails (so editing never looks empty).
+  // floor plans carry a config label + carpet area alongside the image.
   const [photos, setPhotos] = useState<string[]>(initialPhotos ?? []);
-  const [plans, setPlans] = useState<string[]>(initialPlans ?? []);
+  const [plans, setPlans] = useState<FloorPlan[]>(() => (initialPlans ?? []).map(parseFloorPlan));
   const [broBusy, setBroBusy] = useState(false);
   const [broErr, setBroErr] = useState("");
 
@@ -76,7 +78,8 @@ export default function NewPropertyForm({
         // only let a saved draft override media if it actually has some — never
         // let an empty draft wipe the photos we just loaded from the listing
         if (Array.isArray(d.photos) && d.photos.length) setPhotos(d.photos);
-        if (Array.isArray(d.plans) && d.plans.length) setPlans(d.plans);
+        if (Array.isArray(d.plans) && d.plans.length)
+          setPlans(d.plans.map((x: unknown) => (typeof x === "string" ? parseFloorPlan(x) : (x as FloorPlan))));
         if (typeof d.developerId === "string") setDeveloperId(d.developerId);
         setRecovered(true);
       }
@@ -139,7 +142,7 @@ export default function NewPropertyForm({
     try {
       const urls = await Promise.all(Array.from(files).slice(0, 12).map((fl) => resizeImage(fl)));
       if (target === "photos") setPhotos((p) => [...p, ...urls]);
-      else setPlans((p) => [...p, ...urls]);
+      else setPlans((p) => [...p, ...urls.map((u) => ({ url: u, label: "", carpet: "" }))]);
     } catch {
       // ignore — a bad file just doesn't get added
     } finally {
@@ -225,10 +228,15 @@ export default function NewPropertyForm({
     try {
       const manualImgs = f.images.split("\n").map((x) => x.trim()).filter(Boolean);
       const manualPlans = f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean);
-      const [images, floorPlans] = await Promise.all([
+      const [images, hostedPlanUrls] = await Promise.all([
         hostPhotos([...photos, ...manualImgs]),
-        hostPhotos([...plans, ...manualPlans]),
+        hostPhotos(plans.map((p) => p.url)),
       ]);
+      // re-attach each plan's label + carpet to its hosted URL
+      const floorPlans = [
+        ...hostedPlanUrls.map((u, i) => encodeFloorPlan({ label: plans[i]?.label || "", carpet: plans[i]?.carpet || "", url: u })),
+        ...manualPlans.map((u) => encodeFloorPlan({ label: "", carpet: "", url: u })),
+      ];
       const res = await fetch(isEdit ? `/api/admin/properties/${propertyId}` : "/api/admin/properties", {
         method: isEdit ? "PUT" : "POST",
         headers: { "content-type": "application/json" },
@@ -409,7 +417,7 @@ export default function NewPropertyForm({
               )}
             </div>
 
-            {/* ── floor plan upload ── */}
+            {/* ── floor plan upload — each plan gets a config label + carpet area ── */}
             <div className="mt-4">
               <span className="text-[12px] font-medium text-hx-slate mb-1.5 block">Floor plans {plans.length > 0 && <span className="text-hx-success font-semibold">· {plans.length} added ✓</span>}</span>
               <input ref={planRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => addImages(e.target.files, "plans")} className="hidden" />
@@ -418,7 +426,36 @@ export default function NewPropertyForm({
                 {imgBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />} {plans.length ? "Add more" : "Upload floor plans"}
               </button>
               {plans.length > 0 && (
-                <MediaGrid srcs={plans} onRemove={(i) => setPlans((p) => p.filter((_, j) => j !== i))} onView={setLightbox} />
+                <div className="mt-3 space-y-2.5">
+                  {plans.map((pl, i) => (
+                    <div key={i} className="rounded-xl border border-hx-line bg-hx-bg/40 p-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <button type="button" onClick={() => setLightbox(pl.url)} className="w-14 h-11 rounded-lg overflow-hidden border border-hx-line shrink-0 bg-white">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={pl.url} alt="" className="w-full h-full object-cover cursor-zoom-in" />
+                        </button>
+                        <span className="flex-1 min-w-0 text-[12px] font-medium text-hx-slate truncate">{pl.label || `Floor plan ${i + 1}`}</span>
+                        <button type="button" onClick={() => setPlans((p) => p.filter((_, j) => j !== i))} aria-label="Remove"
+                          className="w-8 h-8 shrink-0 rounded-lg text-hx-muted hover:text-hx-danger hover:bg-white inline-flex items-center justify-center">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <select value={pl.label} onChange={(e) => setPlans((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
+                          className="w-full h-9 px-2 rounded-lg border border-hx-line bg-white text-[13px] outline-none focus:border-hx-red/50">
+                          <option value="">Configuration — pick one</option>
+                          {PLAN_LABELS.map((l) => <option key={l} value={l}>{l}</option>)}
+                        </select>
+                        <div className="flex items-center h-9 rounded-lg border border-hx-line bg-white overflow-hidden">
+                          <input value={pl.carpet} onChange={(e) => setPlans((p) => p.map((x, j) => (j === i ? { ...x, carpet: e.target.value.replace(/[^\d]/g, "") } : x)))}
+                            inputMode="numeric" placeholder="Carpet area"
+                            className="flex-1 min-w-0 px-2 text-[13px] num outline-none bg-transparent" />
+                          <span className="px-2 text-[11px] text-hx-muted border-l border-hx-line shrink-0">sqft</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -525,7 +562,7 @@ export default function NewPropertyForm({
           bhk={f.bhk} facing={f.facing} reraId={f.reraId} status={f.status}
           offerNote={f.offerNote}
           photos={[...photos, ...f.images.split("\n").map((x) => x.trim()).filter(Boolean)]}
-          plans={[...plans, ...f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean)]}
+          plans={[...plans, ...f.floorPlans.split("\n").map((x) => x.trim()).filter(Boolean).map((u) => ({ label: "", carpet: "", url: u }))]}
           videoUrl={f.videoUrl} brochureUrl={f.brochureUrl} description={f.description}
           amenities={f.amenities.split(",").map((a) => a.trim()).filter(Boolean)}
           units={units.map((u) => ({
@@ -558,7 +595,7 @@ function BuyerPreview({
   onClose, name, developer, locality, city, bhk, facing, reraId, status, offerNote, photos, plans, videoUrl, brochureUrl, description, amenities, units,
 }: {
   onClose: () => void; name: string; developer: string; locality: string; city: string; bhk: string; facing: string;
-  reraId: string; status: string; offerNote: string; photos: string[]; plans: string[]; videoUrl: string; brochureUrl: string;
+  reraId: string; status: string; offerNote: string; photos: string[]; plans: FloorPlan[]; videoUrl: string; brochureUrl: string;
   description: string; amenities: string[]; units: PUnit[];
 }) {
   const hero = photos[0] || null;
@@ -696,9 +733,17 @@ function BuyerPreview({
               <>
                 <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Floor plans</div>
                 <div className="grid grid-cols-2 gap-3">
-                  {plans.map((src, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={i} src={src} alt={`Floor plan ${i + 1}`} className="w-full h-40 object-contain rounded-xl border border-hx-line bg-hx-bg" />
+                  {plans.map((pl, i) => (
+                    <div key={i} className="rounded-xl border border-hx-line bg-hx-bg overflow-hidden">
+                      {(pl.label || pl.carpet) && (
+                        <div className="px-2.5 py-1.5 flex items-center justify-between gap-1 border-b border-hx-line bg-white">
+                          <span className="text-[11.5px] font-semibold text-hx-ink truncate">{pl.label || "Floor plan"}</span>
+                          {pl.carpet && <span className="num text-[10.5px] text-hx-muted shrink-0">{pl.carpet} sqft</span>}
+                        </div>
+                      )}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={pl.url} alt={pl.label || `Floor plan ${i + 1}`} className="w-full h-36 object-contain" />
+                    </div>
                   ))}
                 </div>
               </>

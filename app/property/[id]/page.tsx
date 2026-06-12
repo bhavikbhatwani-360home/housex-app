@@ -15,6 +15,8 @@ import EmiCalculator from "./EmiCalculator";
 import UnitsBlock from "./UnitsBlock";
 import PhotoGallery from "./PhotoGallery";
 import SaveButton from "./SaveButton";
+import FloorPlans from "./FloorPlans";
+import { parseFloorPlans } from "@/lib/floorplan";
 
 export const dynamic = "force-dynamic";
 
@@ -415,20 +417,8 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             }))}
           />
 
-          {/* floor plans */}
-          {p.floorPlans.length > 0 && (
-            <>
-              <div className="mt-6 text-[12px] uppercase tracking-wider text-hx-muted font-medium mb-2">Floor plans</div>
-              <div className="grid grid-cols-2 gap-3">
-                {p.floorPlans.map((src, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-hx-line overflow-hidden bg-hx-bg">
-                    <img src={src} alt={`Floor plan ${i + 1}`} className="w-full h-40 object-contain" />
-                  </a>
-                ))}
-              </div>
-            </>
-          )}
+          {/* floor plans — grouped by configuration (1 BHK / 2 BHK / Jodi …) */}
+          {p.floorPlans.length > 0 && <FloorPlans plans={parseFloorPlans(p.floorPlans)} />}
 
           {/* amenities */}
           {p.amenities.length > 0 && (
