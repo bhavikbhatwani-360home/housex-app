@@ -40,13 +40,13 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
     possession: p.possession ?? "",
     stage: p.stage,
     description: p.description ?? "",
-    images: p.images.join("\n"),
+    images: "",
     offerNote: p.offerNote ?? "",
     totalTowers: numStr(p.totalTowers),
     totalUnits: numStr(p.totalUnits),
     projectArea: p.projectArea ?? "",
     totalFloors: p.totalFloors ?? "",
-    floorPlans: p.floorPlans.join("\n"),
+    floorPlans: "",
     nearby: p.nearby.join("\n"),
   };
 
@@ -64,6 +64,8 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
       developers={developers}
       initial={initial}
       initialUnits={initialUnits}
+      initialPhotos={p.images}
+      initialPlans={p.floorPlans}
       propertyId={p.id}
       initialDeveloperId={p.developerId ?? ""}
       nextPendingId={next?.id ?? null}
